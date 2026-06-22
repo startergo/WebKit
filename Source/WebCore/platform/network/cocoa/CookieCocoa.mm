@@ -41,7 +41,7 @@ static NSString * const NSHTTPCookieSameSiteStrict = @"strict";
 
 namespace WebCore {
 
-static Vector<uint16_t> portVectorFromList(NSArray<NSNumber *> *portList)
+static Vector<uint16_t> portVectorFromList(NSArray *portList)
 {
     Vector<uint16_t> ports;
     ports.reserveInitialCapacity(portList.count);

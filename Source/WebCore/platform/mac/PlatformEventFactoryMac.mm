@@ -171,6 +171,7 @@ static int clickCountForEvent(NSEvent *event)
 
 static PlatformWheelEventPhase momentumPhaseForEvent(NSEvent *event)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     uint32_t phase = PlatformWheelEventPhaseNone;
 
     if ([event momentumPhase] & NSEventPhaseBegan)
@@ -185,11 +186,18 @@ static PlatformWheelEventPhase momentumPhaseForEvent(NSEvent *event)
         phase |= PlatformWheelEventPhaseCancelled;
 
     return static_cast<PlatformWheelEventPhase>(phase);
+#else
+    // NSEvent -momentumPhase / NSEventPhase are 10.7+; 10.6 scroll events carry no
+    // momentum phase.
+    UNUSED_PARAM(event);
+    return PlatformWheelEventPhaseNone;
+#endif
 }
 
 static PlatformWheelEventPhase phaseForEvent(NSEvent *event)
 {
-    uint32_t phase = PlatformWheelEventPhaseNone; 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+    uint32_t phase = PlatformWheelEventPhaseNone;
     if ([event phase] & NSEventPhaseBegan)
         phase |= PlatformWheelEventPhaseBegan;
     if ([event phase] & NSEventPhaseStationary)
@@ -204,6 +212,11 @@ static PlatformWheelEventPhase phaseForEvent(NSEvent *event)
         phase |= PlatformWheelEventPhaseMayBegin;
 
     return static_cast<PlatformWheelEventPhase>(phase);
+#else
+    // NSEvent -phase / NSEventPhase are 10.7+; 10.6 scroll events carry no phase.
+    UNUSED_PARAM(event);
+    return PlatformWheelEventPhaseNone;
+#endif
 }
 
 static inline String textFromEvent(NSEvent* event)
@@ -669,17 +682,27 @@ OptionSet<PlatformEvent::Modifier> modifiersForEvent(NSEvent *event)
 
 static int typeForEvent(NSEvent *event)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
     return static_cast<int>([NSMenu menuTypeForEvent:event]);
+#else
+    // +[NSMenu menuTypeForEvent:] is a modern AppKit SPI (returns NSMenuType);
+    // absent on 10.6, where sending it raises "unrecognized selector". 0 = none.
+    UNUSED_PARAM(event);
+    return 0;
+#endif
 }
 
 void getWheelEventDeltas(NSEvent *event, float& deltaX, float& deltaY, BOOL& continuous)
 {
     ASSERT(event);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (event.hasPreciseScrollingDeltas) {
         deltaX = event.scrollingDeltaX;
         deltaY = event.scrollingDeltaY;
         continuous = YES;
-    } else {
+    } else
+#endif
+    {
         deltaX = event.deltaX;
         deltaY = event.deltaY;
         continuous = NO;
@@ -712,6 +735,7 @@ public:
         // PlatformEvent
         m_type = mouseEventTypeForEvent(event);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         BOOL eventIsPressureEvent = [event type] == NSEventTypePressure;
         if (eventIsPressureEvent) {
             // Since AppKit doesn't send mouse events for force down or force up, we have to use the current pressure
@@ -723,6 +747,10 @@ public:
             else
                 m_type = PlatformEvent::MouseForceChanged;
         }
+#else
+        /* [leopard] NSEventTypePressure / force touch is 10.10+; unavailable on 10.6. */
+        BOOL eventIsPressureEvent = NO;
+#endif
 
         m_modifiers = modifiersForEvent(event);
         m_timestamp = eventTimeStampSince1970(event);
@@ -738,9 +766,14 @@ public:
 #endif
 
         m_force = 0;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         int stage = eventIsPressureEvent ? event.stage : correspondingPressureEvent.stage;
         double pressure = eventIsPressureEvent ? event.pressure : correspondingPressureEvent.pressure;
         m_force = pressure + stage;
+#else
+        /* [leopard] force/pressure stages are 10.10+; no force input on 10.6. */
+        UNUSED_PARAM(eventIsPressureEvent);
+#endif
 
         // Mac specific
         m_modifierFlags = [event modifierFlags];

@@ -30,6 +30,10 @@
 
 #import "WebViewInternal.h"
 #import "WebViewData.h"
+// [leopard-webkit-build] Declares the 10.7+ NSWindow convertRectToScreen:/
+// convertRectFromScreen: category (sdk_stubs_605.mm provides the 10.6 bridge).
+// WebView.mm calls convertRectToScreen: for text-indicator screen-coord conversion.
+#import <AppKit/NSWindowScreenConversionCompat.h>
 
 #import "BackForwardList.h"
 #import "DOMCSSStyleDeclarationInternal.h"
@@ -4624,8 +4628,10 @@ IGNORE_WARNINGS_END
         return false;
 
 #if !PLATFORM(IOS_FAMILY)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     if (_private->windowOcclusionDetectionEnabled && (window.occlusionState & NSWindowOcclusionStateVisible) != NSWindowOcclusionStateVisible)
         return false;
+#endif
 #endif
 
     return true;
@@ -5466,7 +5472,11 @@ IGNORE_WARNINGS_END
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     if (![defaults objectForKey:WebAutomaticTextReplacementEnabled])
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         return [NSSpellChecker isAutomaticTextReplacementEnabled];
+#else
+        return NO; // [leopard-webkit-build] 10.8+ NSSpellChecker autocorrect API
+#endif
     return [defaults boolForKey:WebAutomaticTextReplacementEnabled];
 }
 
@@ -5480,7 +5490,11 @@ IGNORE_WARNINGS_END
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     if (![defaults objectForKey:WebAutomaticSpellingCorrectionEnabled])
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         return [NSSpellChecker isAutomaticTextReplacementEnabled];
+#else
+        return NO; // [leopard-webkit-build] 10.8+ NSSpellChecker autocorrect API
+#endif
     return [defaults boolForKey:WebAutomaticSpellingCorrectionEnabled];
 }
 
@@ -5494,7 +5508,11 @@ IGNORE_WARNINGS_END
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     if (![defaults objectForKey:WebAutomaticQuoteSubstitutionEnabled])
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         return [NSSpellChecker isAutomaticQuoteSubstitutionEnabled];
+#else
+        return NO; // [leopard-webkit-build] 10.8+ NSSpellChecker autocorrect API
+#endif
 
     return [defaults boolForKey:WebAutomaticQuoteSubstitutionEnabled];
 }
@@ -5503,7 +5521,11 @@ IGNORE_WARNINGS_END
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     if (![defaults objectForKey:WebAutomaticDashSubstitutionEnabled])
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         return [NSSpellChecker isAutomaticDashSubstitutionEnabled];
+#else
+        return NO; // [leopard-webkit-build] 10.8+ NSSpellChecker autocorrect API
+#endif
 
     return [defaults boolForKey:WebAutomaticDashSubstitutionEnabled];
 }
@@ -6775,13 +6797,13 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     WebCore::IntPoint global(WebCore::globalPoint([draggingInfo draggingLocation], [self window]));
     auto* dragData = new WebCore::DragData(draggingInfo, client, global, static_cast<WebCore::DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
 
-    NSArray* types = draggingInfo.draggingPasteboard.types;
+    NSArray* types = [[draggingInfo draggingPasteboard] types];
     if (![types containsObject:WebArchivePboardType] && [types containsObject:WebCore::legacyFilesPromisePasteboardType()]) {
 
         // FIXME: legacyFilesPromisePasteboardType() contains UTIs, not path names. Also, it's not
         // guaranteed that the count of UTIs equals the count of files, since some clients only write
         // unique UTIs.
-        NSArray *files = [draggingInfo.draggingPasteboard propertyListForType:WebCore::legacyFilesPromisePasteboardType()];
+        NSArray *files = [[draggingInfo draggingPasteboard] propertyListForType:WebCore::legacyFilesPromisePasteboardType()];
         if (![files isKindOfClass:[NSArray class]]) {
             delete dragData;
             return false;
@@ -6793,6 +6815,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
             return false;
         }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101202
         size_t fileCount = files.count;
         Vector<String> *fileNames = new Vector<String>;
         NSURL *dropDestination = [NSURL fileURLWithPath:dropDestinationPath isDirectory:YES];
@@ -6818,6 +6841,13 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         }];
 
         return true;
+#else
+        /* [leopard] NSFilePromiseReceiver is 10.12+. On 10.6 the modern promised-file drag path is
+           unavailable; fall through to the standard drag operation below. */
+        UNUSED_PARAM(dropDestinationPath);
+        delete dragData;
+        return false;
+#endif
     }
     bool returnValue = core(self)->dragController().performDragOperation(*dragData);
     delete dragData;
@@ -7289,10 +7319,22 @@ static WebFrameView *containingFrameView(NSView *view)
     NSWindow *window = [self window];
     NSWindow *hostWindow = [self hostWindow];
     if (window)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         return [window backingScaleFactor];
+#else
+        return 1.0; // [leopard-webkit-build] backingScaleFactor is 10.7+ (Retina); 10.6 is always 1.0
+#endif
     if (hostWindow)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         return [hostWindow backingScaleFactor];
+#else
+        return 1.0;
+#endif
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     return [[NSScreen mainScreen] backingScaleFactor];
+#else
+    return 1.0;
+#endif
 }
 #endif
 

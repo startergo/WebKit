@@ -129,8 +129,13 @@ std::array<TagInfo, 256> pagesPerVMTag()
 
         bool anonymous = !info.external_pager;
         if (anonymous) {
+            // [leopard] vm_region_submap_info_64.pages_reusable is post-10.6; treat as 0.
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+            tags[info.user_tag].dirty += info.pages_resident;
+#else
             tags[info.user_tag].dirty += info.pages_resident - info.pages_reusable;
             tags[info.user_tag].reclaimable += info.pages_reusable;
+#endif
         } else
             tags[info.user_tag].dirty += info.pages_dirtied;
     }

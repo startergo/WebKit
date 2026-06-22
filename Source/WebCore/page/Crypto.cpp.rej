@@ -1,0 +1,19 @@
+diff a/Source/WebCore/page/Crypto.cpp b/Source/WebCore/page/Crypto.cpp	(rejected hunks)
+@@ -38,6 +38,17 @@
+ 
+ #if OS(DARWIN)
+ #include "CommonCryptoUtilities.h"
++// [leopard-webkit-build] CommonCryptoUtilities.h gates its entire body (including
++// the CCRandom declarations) under ENABLE(SUBTLE_CRYPTO). Crypto.cpp's
++// getRandomValues() uses CCRandomCopyBytes/kCCRandomDefault/kCCSuccess on every
++// Darwin build regardless of SubtleCrypto. Forward-declare the minimal set and
++// pull in kCCSuccess when the SubtleCrypto feature is off.
++#if !ENABLE(SUBTLE_CRYPTO)
++#include <CommonCrypto/CommonCryptor.h>
++typedef struct __CCRandom *CCRandomRef;
++extern const CCRandomRef kCCRandomDefault;
++extern "C" int CCRandomCopyBytes(CCRandomRef, void *, size_t);
++#endif
+ #endif
+ 
+ namespace WebCore {

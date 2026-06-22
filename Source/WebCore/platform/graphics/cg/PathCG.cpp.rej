@@ -1,0 +1,25 @@
+diff a/Source/WebCore/platform/graphics/cg/PathCG.cpp b/Source/WebCore/platform/graphics/cg/PathCG.cpp	(rejected hunks)
+@@ -221,7 +221,9 @@ void Path::transform(const AffineTransform& transform)
+         return;
+ 
+     CGAffineTransform transformCG = transform;
+-#if PLATFORM(WIN)
++#if PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1090)
++    // [leopard-webkit-build] CGPathCreateMutableCopyByTransformingPath is 10.9+.
++    // On 10.6 / Windows, build the transformed copy via the 10.6-available primitives.
+     CGMutablePathRef path = CGPathCreateMutable();
+     CGPathAddPath(path, &transformCG, m_path);
+ #else
+@@ -315,6 +317,12 @@ void Path::platformAddPathForRoundedRect(const FloatRect& rect, const FloatSize&
+             radiusWidth = rectWidth / 2 - std::numeric_limits<CGFloat>::epsilon();
+         if (rectHeight < 2 * radiusHeight)
+             radiusHeight = rectHeight / 2 - std::numeric_limits<CGFloat>::epsilon();
++#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1090
++    // [leopard-webkit-build] CGPathAddRoundedRect is 10.9+. The stub in
++    // sdk_stubs_605.mm delegates to CGPathAddRect (rounded corners lost on 10.6 —
++    // cosmetic only). Declare it here so this TU compiles against the 10.6 SDK.
++    extern void CGPathAddRoundedRect(CGMutablePathRef, const CGAffineTransform*, CGRect, CGFloat, CGFloat);
++#endif
+         CGPathAddRoundedRect(ensurePlatformPath(), nullptr, rectToDraw, radiusWidth, radiusHeight);
+         return;
+     }

@@ -59,6 +59,7 @@ set(ANGLE_PRIVATE_INCLUDE_DIRECTORIES
 
 set(ANGLE_DEFINITIONS
     ANGLE_ENABLE_ESSL
+    ANGLE_ENABLE_OPENGL
 )
 
 set(ANGLE_SOURCES
@@ -127,13 +128,50 @@ if (USE_ANGLE_EGL)
     target_link_libraries(ANGLEFramework INTERFACE EGL GLESv2)
     target_compile_definitions(ANGLEFramework INTERFACE ${gl_prototypes})
 else ()
-    add_library(ANGLE STATIC ${ANGLE_SOURCES})
+    # [leopard] The else-branch originally built ANGLE from only ${ANGLE_SOURCES} (common +
+    # translator), omitting the core backend (libangle_sources: State.cpp, validation, GLES1,
+    # etc.). That left ~1310 gl:: symbols (e.g. State::syncImages) undefined in WebCore. Mirror
+    # the if-branch's full source set so the complete ANGLE backend compiles for the static lib.
+    add_library(ANGLE STATIC
+        ${ANGLE_SOURCES}
+        ${libangle_sources}
+        ${libangle_image_util_sources}
+        ${xxhash_sources}
+        ${libangle_gl_sources}
+        ${libangle_gl_cgl_sources}
+        ${libangle_mac_sources}
+    )
+    target_link_libraries(ANGLE PRIVATE
+        "-framework OpenGL"
+        "-framework IOSurface"
+        "-framework QuartzCore"
+        "-framework Cocoa"
+    )
     target_include_directories(ANGLE PRIVATE ${ANGLE_PRIVATE_INCLUDE_DIRECTORIES})
     target_compile_definitions(ANGLE PRIVATE
         ${ANGLE_DEFINITIONS}
         ${no_gl_prototypes}
         LIBANGLE_IMPLEMENTATION
     )
+
+    # [leopard] The SHARED GLESv2/EGL targets above only build under USE_ANGLE_EGL. For the
+    # 10.6 static framework we still need the EGL_*/GL_* entry points compiled and linked into
+    # WebCore so WebGL resolves. Build them as a STATIC lib with prototypes enabled.
+    add_library(GLESv2 STATIC ${libglesv2_sources} ${libegl_sources})
+    target_include_directories(GLESv2 PRIVATE ${ANGLE_PRIVATE_INCLUDE_DIRECTORIES})
+    target_compile_definitions(GLESv2 PRIVATE
+        ${ANGLE_DEFINITIONS}
+        ${gl_prototypes}
+        LIBGLESV2_IMPLEMENTATION
+        LIBEGL_IMPLEMENTATION
+        EGLAPI=
+    )
+    add_dependencies(GLESv2 ANGLE GLSLANGHeaders ANGLEHeaders)
+    target_link_libraries(GLESv2 ANGLE)
+    target_link_libraries(ANGLEFramework INTERFACE ANGLE GLESv2)
+    # NOTE: do NOT propagate gl_prototypes to ANGLEFramework INTERFACE — WebCore includes the
+    # system <OpenGL/gl.h>, and GL_GLES_PROTOTYPES=1 would collide with desktop GL declarations.
+    # The prototypes are applied PRIVATE to the GLESv2 entry-point lib only (above).
 endif ()
 
 if (USE_ANGLE_WEBGL)

@@ -77,7 +77,11 @@ void DebugHeap::scavenge()
 {
     // Currently |goal| does not affect on the behavior of malloc_zone_pressure_relief if (1) we only scavenge one zone and (2) it is not nanomalloc.
     constexpr size_t goal = 0;
+#if !defined(LEOPARD_WEBKIT)  /* [leopard] malloc_zone_pressure_relief is 10.7+; absent on 10.6 */
     malloc_zone_pressure_relief(m_zone, goal);
+#else
+    (void)goal;
+#endif
 }
 
 void DebugHeap::dump()

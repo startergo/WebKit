@@ -58,6 +58,7 @@
 #elif USE(OPENGL)
 #import <IOKit/IOKitLib.h>
 #import <OpenGL/gl.h>
+#import <OpenGL/OpenGL.h>
 #elif USE(ANGLE)
 #define EGL_EGL_PROTOTYPES 0
 // Skip the inclusion of ANGLE's explicit context entry points for now.
@@ -89,6 +90,14 @@ typedef void* GLeglContext;
 #endif
 
 namespace WebCore {
+
+/* [leopard] CGLUpdateContext exists in the 10.6 OpenGL dylib but is not declared in the 10.6
+   SDK headers (only the profiler enum). Declare it here where it is used by the GPU-switch
+   handlers. CGLContextObj/CGLError come from <OpenGL/CGLTypes.h>. */
+#if (USE(OPENGL) || USE(ANGLE)) && __MAC_OS_X_VERSION_MAX_ALLOWED < 1070
+extern "C" CGLError CGLUpdateContext(CGLContextObj ctx);
+#endif
+
 
 static const unsigned statusCheckThreshold = 5;
 

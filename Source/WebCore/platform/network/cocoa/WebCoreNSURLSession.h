@@ -80,8 +80,10 @@ WEBCORE_EXPORT @interface WebCoreNSURLSession : NSObject {
 
 - (void)resetWithCompletionHandler:(void (^)(void))completionHandler;
 - (void)flushWithCompletionHandler:(void (^)(void))completionHandler;
-- (void)getTasksWithCompletionHandler:(void (^)(NSArray<NSURLSessionDataTask *> *dataTasks, NSArray<NSURLSessionUploadTask *> *uploadTasks, NSArray<NSURLSessionDownloadTask *> *downloadTasks))completionHandler;
-- (void)getAllTasksWithCompletionHandler:(void (^)(NSArray<__kindof NSURLSessionTask *> *tasks))completionHandler;
+// [leopard-webkit-build] NSArray lightweight generics require the 10.11 SDK; the
+// 10.6 SDK's NSArray is non-parameterized, so drop the type arguments here.
+- (void)getTasksWithCompletionHandler:(void (^)(NSArray *dataTasks, NSArray *uploadTasks, NSArray *downloadTasks))completionHandler;
+- (void)getAllTasksWithCompletionHandler:(void (^)(NSArray *tasks))completionHandler;
 
 - (NSURLSessionDataTask *)dataTaskWithRequest:(NSURLRequest *)request;
 - (NSURLSessionDataTask *)dataTaskWithURL:(NSURL *)url;

@@ -43,7 +43,12 @@ NSScrollerStyle ScrollerStyle::recommendedScrollerStyle()
     
     if (DeprecatedGlobalSettings::usesOverlayScrollbars())
         return NSScrollerStyleOverlay;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     return [NSScroller preferredScrollerStyle];
+#else
+    /* [leopard] +[NSScroller preferredScrollerStyle] is 10.7+; 10.6 has only legacy scrollers. */
+    return NSScrollerStyleLegacy;
+#endif
 }
 
 void ScrollerStyle::setUseOverlayScrollbars(bool useOverlayScrollbars)

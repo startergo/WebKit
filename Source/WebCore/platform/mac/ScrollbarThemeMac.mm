@@ -613,13 +613,21 @@ void ScrollbarThemeMac::setUpOverhangAreaShadow(CALayer *layer)
         layer.shadowRadius = shadowRadius;
     }
 
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+    // [leopard-webkit-build] CGPathCreateWithRect (10.9+) and CALayer.shadowPath
+    // (10.7+) are absent from the 10.6 SDK. On 10.6 the layer still casts a shadow
+    // from its composited shape (opacity/offset/radius set above), so skip the
+    // explicit path. Gated out entirely so neither symbol is referenced.
     RetainPtr<CGPathRef> shadowPath = adoptCF(CGPathCreateWithRect(layer.bounds, NULL));
     layer.shadowPath = shadowPath.get();
+#endif
 }
 
 void ScrollbarThemeMac::removeOverhangAreaShadow(CALayer *layer)
 {
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     layer.shadowPath = nil;
+#endif
     layer.shadowOpacity = 0;
 }
 

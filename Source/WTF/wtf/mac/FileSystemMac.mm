@@ -40,8 +40,9 @@ bool FileSystem::deleteEmptyDirectory(const String& path)
 
     if (NSArray *directoryContents = [fileManager contentsOfDirectoryAtPath:path error:nullptr]) {
         // Explicitly look for and delete .DS_Store files.
-        if (directoryContents.count == 1 && [directoryContents.firstObject isEqualToString:@".DS_Store"])
-            [fileManager removeItemAtPath:[path stringByAppendingPathComponent:directoryContents.firstObject] error:nullptr];
+        // [leopard] 10.6 NSArray lacks the -firstObject property; count==1 so [.. objectAtIndex:0] is safe.
+        if (directoryContents.count == 1 && [[directoryContents objectAtIndex:0] isEqualToString:@".DS_Store"])
+            [fileManager removeItemAtPath:[path stringByAppendingPathComponent:[directoryContents objectAtIndex:0]] error:nullptr];
     }
 
     // rmdir(...) returns 0 on successful deletion of the path and non-zero in any other case (including invalid permissions or non-existent file)

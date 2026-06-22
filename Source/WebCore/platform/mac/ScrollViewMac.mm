@@ -37,7 +37,11 @@
 #import <wtf/BlockObjCExceptions.h>
 
 @interface NSScrollView ()
-- (NSEdgeInsets)contentInsets;
+// [leopard-webkit-build] contentInsets / automaticallyAdjustsContentInsets are 10.10+
+// NSScrollView APIs; declare them here (compile-time) so ScrollViewMac compiles. The
+// USAGE sites are gated under ≥10.10 below, so on 10.6 these are never called.
+@property NSEdgeInsets contentInsets;
+@property BOOL automaticallyAdjustsContentInsets;
 @end
 
 @interface NSWindow (WebWindowDetails)
@@ -116,15 +120,18 @@ bool ScrollView::platformCanBlitOnScroll() const
 
 float ScrollView::platformTopContentInset() const
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     return scrollView().contentInsets.top;
     END_BLOCK_OBJC_EXCEPTIONS;
-
+#endif
+    // [leopard-webkit-build] 10.6 NSScrollView has no contentInsets API.
     return 0;
 }
 
 void ScrollView::platformSetTopContentInset(float topContentInset)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     if (topContentInset)
         scrollView().automaticallyAdjustsContentInsets = NO;
@@ -135,6 +142,9 @@ void ScrollView::platformSetTopContentInset(float topContentInset)
     contentInsets.top = topContentInset;
     scrollView().contentInsets = contentInsets;
     END_BLOCK_OBJC_EXCEPTIONS;
+#else
+    UNUSED_PARAM(topContentInset);
+#endif
 }
 
 IntRect ScrollView::platformVisibleContentRect(bool includeScrollbars) const
@@ -142,8 +152,12 @@ IntRect ScrollView::platformVisibleContentRect(bool includeScrollbars) const
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     IntRect visibleContentRect = platformVisibleContentRectIncludingObscuredArea(includeScrollbars);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    // [leopard-webkit-build] NSScrollView contentInsets is 10.10+; on 10.6 there are
+    // no content insets to apply to the visible content rect.
     visibleContentRect.move(scrollView().contentInsets.left, scrollView().contentInsets.top);
     visibleContentRect.contract(scrollView().contentInsets.left + scrollView().contentInsets.right, scrollView().contentInsets.top + scrollView().contentInsets.bottom);
+#endif
 
     return visibleContentRect;
     END_BLOCK_OBJC_EXCEPTIONS;

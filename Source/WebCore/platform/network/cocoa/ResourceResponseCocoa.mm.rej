@@ -1,0 +1,19 @@
+diff a/Source/WebCore/platform/network/cocoa/ResourceResponseCocoa.mm b/Source/WebCore/platform/network/cocoa/ResourceResponseCocoa.mm	(rejected hunks)
+@@ -93,10 +93,17 @@ CertificateInfo ResourceResponse::platformCertificateInfo() const
+         return { };
+     auto trust = checked_cf_cast<SecTrustRef>(trustValue);
+ 
++#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
++    // [leopard-webkit-build] SecTrustGetTrustResult is 10.7+; on 10.6 use the
++    // classic SecTrustEvaluate (10.2+) directly by forcing the invalid-result path.
+     SecTrustResultType trustResultType;
+     OSStatus result = SecTrustGetTrustResult(trust, &trustResultType);
+     if (result != errSecSuccess)
+         return { };
++#else
++    SecTrustResultType trustResultType = kSecTrustResultInvalid;
++    OSStatus result = errSecSuccess;
++#endif
+ 
+     if (trustResultType == kSecTrustResultInvalid) {
+         result = SecTrustEvaluate(trust, &trustResultType);

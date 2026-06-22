@@ -77,7 +77,11 @@ void DeprecatedGlobalSettings::setAVFoundationEnabled(bool enabled)
         return;
 
     gAVFoundationEnabled = enabled;
+#if ENABLE(VIDEO)
+    // [leopard-webkit-build] HTMLMediaElement is only defined under ENABLE(VIDEO).
+    // The AVFoundation/QTKit media-backend toggles are no-ops on a VIDEO=0 build.
     HTMLMediaElement::resetMediaEngines();
+#endif
 }
 
 void DeprecatedGlobalSettings::setAVFoundationNSURLSessionEnabled(bool enabled)
@@ -98,7 +102,11 @@ void DeprecatedGlobalSettings::setGStreamerEnabled(bool enabled)
     gGStreamerEnabled = enabled;
 
 #if ENABLE(VIDEO)
+#if ENABLE(VIDEO)
+    // [leopard-webkit-build] HTMLMediaElement is only defined under ENABLE(VIDEO).
+    // The AVFoundation/QTKit media-backend toggles are no-ops on a VIDEO=0 build.
     HTMLMediaElement::resetMediaEngines();
+#endif
 #endif
 }
 #endif

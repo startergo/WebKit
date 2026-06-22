@@ -1,0 +1,17 @@
+diff a/Source/WebCore/platform/mac/NSScrollerImpDetails.mm b/Source/WebCore/platform/mac/NSScrollerImpDetails.mm	(rejected hunks)
+@@ -34,9 +34,15 @@ namespace WebCore {
+ 
+ NSScrollerStyle recommendedScrollerStyle()
+ {
++#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+     if (DeprecatedGlobalSettings::usesOverlayScrollbars())
+         return NSScrollerStyleOverlay;
+     return [NSScroller preferredScrollerStyle];
++#else
++    // [leopard-webkit-build] 10.6 has only legacy scrollers; +preferredScrollerStyle
++    // is 10.7+. Always return Legacy (0).
++    return NSScrollerStyleLegacy;
++#endif
+ }
+ 
+ }

@@ -709,14 +709,26 @@ void PlatformCALayerCocoa::setMasksToBounds(bool value)
 
 bool PlatformCALayerCocoa::acceleratesDrawing() const
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     return [m_layer drawsAsynchronously];
+#else
+    // -[CALayer drawsAsynchronously] is a 10.8+ SPI; absent on 10.6.
+    return false;
+#endif
 }
 
 void PlatformCALayerCocoa::setAcceleratesDrawing(bool acceleratesDrawing)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     BEGIN_BLOCK_OBJC_EXCEPTIONS
     [m_layer setDrawsAsynchronously:acceleratesDrawing];
     END_BLOCK_OBJC_EXCEPTIONS
+#else
+    // -[CALayer setDrawsAsynchronously:] is a 10.8+ SPI; on 10.6 CALayer does not
+    // respond to it, so sending it raises "unrecognized selector" and terminates
+    // the app. Async/accelerated layer drawing is simply unavailable on 10.6.
+    UNUSED_PARAM(acceleratesDrawing);
+#endif
 }
 
 bool PlatformCALayerCocoa::wantsDeepColorBackingStore() const
@@ -907,7 +919,11 @@ void PlatformCALayerCocoa::setTimeOffset(CFTimeInterval value)
 
 float PlatformCALayerCocoa::contentsScale() const
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     return [m_layer contentsScale];
+#else
+    return 1; /* [leopard] CALayer.contentsScale is 10.7+; no HiDPI on 10.6 */
+#endif
 }
 
 void PlatformCALayerCocoa::setContentsScale(float value)

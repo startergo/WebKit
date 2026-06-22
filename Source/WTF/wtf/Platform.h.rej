@@ -1,0 +1,86 @@
+diff a/Source/WTF/wtf/Platform.h b/Source/WTF/wtf/Platform.h	(rejected hunks)
+@@ -584,8 +584,15 @@
+ #define HAVE_SEC_KEYCHAIN 1
+ 
+ #if CPU(X86_64)
++#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+ #define HAVE_NETWORK_EXTENSION 1
+-#define USE_PLUGIN_HOST_PROCESS 1
++#endif
++/* 10.6 build: the out-of-process (Hosted) Netscape plugin host needs XPC +
++   private frameworks absent from the MacOSX 10.6 SDK.  The Hosted plugin
++   sources are also excluded from the WebKitLegacy build (see the 605 patch on
++   PlatformMac.cmake); forcing this to 0 makes every USE(PLUGIN_HOST_PROCESS)
++   caller compile out so there are no dangling symbol references. */
++#define USE_PLUGIN_HOST_PROCESS 0
+ #endif
+ 
+ /* OS X defines a series of platform macros for debugging. */
+@@ -1115,8 +1122,15 @@
+ #endif
+ 
+ #if PLATFORM(COCOA)
++// [leopard-webkit-build] AVFoundation.framework is 10.7+; gate USE(AVFOUNDATION) to
++// ≥10.7 so the AVF media-player backend TUs (platform/graphics/avfoundation/*, which
++// #import <AVFoundation/*.h>) compile out on 10.6. The HTMLMediaElement DOM classes
++// still compile (gated by ENABLE(VIDEO) alone) providing the symbols Safari needs;
++// only the AVF playback backend is absent on 10.6.
++#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+ #define USE_AVFOUNDATION 1
+ #endif
++#endif
+ 
+ #if !defined(ENABLE_TREE_DEBUGGING)
+ #if !defined(NDEBUG)
+@@ -1127,21 +1141,39 @@
+ #endif
+ 
+ #if PLATFORM(IOS) || PLATFORM(MAC)
++// [leopard-webkit-build] CoreMedia.framework is 10.7+; gate USE(COREMEDIA) to ≥10.7
++// so ClockCM.mm (PAL system clock using CMTimebase/CMClock APIs) and the CoreMedia
++// soft-link layer compile out on 10.6. The CoreMedia.h overlay still provides the
++// TYPE definitions for TUs that reference them transitively.
++#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+ #define USE_COREMEDIA 1
++#endif
++#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+ #define HAVE_AVFOUNDATION_VIDEO_OUTPUT 1
++#endif
++// [leopard-webkit-build] VideoToolbox.framework is 10.8+; gate USE(VIDEOTOOLBOX)
++// to ≥10.8 so WebCoreDecompressionSession.mm (which #imports CoreMedia sub-headers
++// only present under this gate) and the VideoToolbox soft-link TU compile out on 10.6.
++#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080) || PLATFORM(IOS)
+ #define USE_VIDEOTOOLBOX 1
+ #endif
++#endif
+ 
+-#if PLATFORM(IOS) || PLATFORM(MAC) || (OS(WINDOWS) && USE(CG))
++#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070) || (OS(WINDOWS) && USE(CG))
+ #define HAVE_AVFOUNDATION_MEDIA_SELECTION_GROUP 1
+ #endif
+ 
+-#if PLATFORM(IOS) || PLATFORM(MAC) || (OS(WINDOWS) && USE(CG))
++#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070) || (OS(WINDOWS) && USE(CG))
+ #define HAVE_AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT 1
++#endif
++// [leopard-webkit-build] MediaAccessibility.framework is macOS 10.9+; gate the
++// HAVE flag so MediaAccessibilitySoftLink.cpp (guarded on this flag) compiles
++// out on the 10.6 target where the framework header is absent.
++#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090) || (OS(WINDOWS) && USE(CG))
+ #define HAVE_MEDIA_ACCESSIBILITY_FRAMEWORK 1
+ #endif
+ 
+-#if PLATFORM(IOS) || PLATFORM(MAC)
++#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070)
+ #define HAVE_AVFOUNDATION_LOADER_DELEGATE 1
+ #endif
+ 
+@@ -1192,7 +1224,7 @@
+ #define USE_INSERTION_UNDO_GROUPING 1
+ #endif
+ 
+-#if PLATFORM(MAC) || PLATFORM(IOS)
++#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070) || PLATFORM(IOS)
+ #define HAVE_AVASSETREADER 1
+ #endif
+ 

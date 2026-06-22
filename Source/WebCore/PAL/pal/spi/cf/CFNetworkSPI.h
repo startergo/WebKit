@@ -121,6 +121,20 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 #endif
 
 #if defined(__OBJC__)
+// [leopard] LEOPARD_NSURLSESSION_FWD: NSURLSession and friends are 10.9+ and absent
+// from the 10.6 SDK. Provide EMPTY PRIMARY @interface declarations so the SPI
+// class-extension (@interface X ()) blocks below have a primary class to extend.
+// (A forward @class is insufficient for class extensions.) Never used on 10.6.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED < 1090
+@class NSURLSessionTaskMetrics;
+@class NSUUID;
+@interface NSURLSession : NSObject @end
+@interface NSURLSessionTask : NSObject @end
+@interface NSURLSessionDataTask : NSURLSessionTask @end
+@interface NSURLSessionDownloadTask : NSURLSessionTask @end
+@interface NSURLSessionConfiguration : NSObject @end
+@interface NSURLSessionTaskTransactionMetrics : NSObject @end
+#endif
 
 @interface NSURLSessionTask ()
 @property (readonly, retain) NSURLSessionTaskMetrics* _incompleteTaskMetrics;

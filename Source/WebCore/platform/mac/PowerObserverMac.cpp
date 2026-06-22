@@ -28,6 +28,11 @@
 #if PLATFORM(MAC)
 #import "PowerObserverMac.h"
 
+// [leopard-webkit-build] IONotificationPortSetDispatchQueue is a runtime IOKit
+// symbol not declared in the 10.6 SDK headers; sdk_stubs_605.mm supplies the
+// no-op definition. Forward-declare at file scope so this TU compiles.
+extern "C" void IONotificationPortSetDispatchQueue(IONotificationPortRef, dispatch_queue_t);
+
 namespace WebCore {
 
 PowerObserver::PowerObserver(WTF::Function<void()>&& powerOnHander)

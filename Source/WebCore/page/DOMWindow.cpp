@@ -132,6 +132,14 @@
 #include "WebKitNamespace.h"
 #endif
 
+// [leopard-webkit-build] UserContentProvider is consumed by the
+// ENABLE(CONTENT_EXTENSIONS) popup blocker (DOMWindow::openmnem), not just the
+// USER_MESSAGE_HANDLERS path; include it under the gate that matches the call site
+// (USER_MESSAGE_HANDLERS is off on the 10.6 build but CONTENT_EXTENSIONS is on).
+#if ENABLE(CONTENT_EXTENSIONS)
+#include "UserContentProvider.h"
+#endif
+
 #if ENABLE(GAMEPAD)
 #include "GamepadManager.h"
 #endif

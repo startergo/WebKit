@@ -1125,6 +1125,7 @@ void WebEditorClient::requestCandidatesForSelection(const VisibleSelection& sele
 
     NSTextCheckingTypes checkingTypes = NSTextCheckingTypeSpelling | NSTextCheckingTypeReplacement | NSTextCheckingTypeCorrection;
     auto weakEditor = makeWeakPtr(*this);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101202
     m_lastCandidateRequestSequenceNumber = [[NSSpellChecker sharedSpellChecker] requestCandidatesForSelectedRange:m_rangeForCandidates inString:m_paragraphContextForCandidateRequest.get() types:checkingTypes options:nil inSpellDocumentWithTag:spellCheckerDocumentTag() completionHandler:[weakEditor](NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (!weakEditor)
@@ -1132,6 +1133,11 @@ void WebEditorClient::requestCandidatesForSelection(const VisibleSelection& sele
             weakEditor->handleRequestedCandidates(sequenceNumber, candidates);
         });
     }];
+#else
+    /* [leopard] NSSpellChecker requestCandidatesForSelectedRange: (text candidates) is 10.12.2+;
+       unavailable on 10.6. No candidate suggestions; editing proceeds normally. */
+    m_lastCandidateRequestSequenceNumber = 0;
+#endif
 }
 
 void WebEditorClient::handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates)

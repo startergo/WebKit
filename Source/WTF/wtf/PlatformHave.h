@@ -310,7 +310,10 @@
 #endif
 
 #if PLATFORM(MAC)
+#if !(PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101202)
+/* [leopard] NSTouchBar / NSCandidateListTouchBarItem are 10.12.2+; absent on 10.6. */
 #define HAVE_TOUCH_BAR 1
+#endif
 #endif
 
 #if PLATFORM(COCOA) && !(PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101500) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
@@ -348,7 +351,12 @@
 #endif
 
 #if PLATFORM(MAC) || PLATFORM(IOS) || PLATFORM(MACCATALYST)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101400
+/* [leopard] NSAppearance dark-mode APIs (effectiveAppearance / NSAppearanceName /
+   bestMatchFromAppearancesWithNames) are 10.9-10.14; unavailable on 10.6. Disable. */
+#else
 #define HAVE_OS_DARK_MODE_SUPPORT 1
+#endif
 #endif
 
 #if PLATFORM(MAC)
@@ -630,4 +638,14 @@
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101600) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 140000)
 #define HAVE_LOGGING_PRIVACY_LEVEL 1
+#endif
+
+// [leopard] LEOPARD_HAVE_OVERRIDES: disable 10.7+/10.9+/10.11+ features absent on 10.6.
+#if PLATFORM(MAC) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED < 1070)
+#undef HAVE_AVKIT
+#define HAVE_AVKIT 0
+#undef HAVE_AVCONTENTKEYSESSION
+#define HAVE_AVCONTENTKEYSESSION 0
+#undef HAVE_AVOBSERVATIONCONTROLLER
+#define HAVE_AVOBSERVATIONCONTROLLER 0
 #endif

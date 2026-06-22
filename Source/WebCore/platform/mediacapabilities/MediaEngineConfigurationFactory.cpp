@@ -37,7 +37,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(COCOA)
+#if 0 /* [leopard] Cocoa media-config excluded: no VideoToolbox backend on 10.6 */
 #include "MediaEngineConfigurationFactoryCocoa.h"
 #endif
 
@@ -62,7 +62,7 @@ using FactoryVector = Vector<MediaEngineFactory>;
 static const FactoryVector& factories()
 {
     static NeverDestroyed<FactoryVector> factories = makeNeverDestroyed(FactoryVector({
-#if PLATFORM(COCOA)
+#if 0 /* [leopard] Cocoa media-config excluded: no VideoToolbox backend on 10.6 */
         { &createMediaPlayerDecodingConfigurationCocoa, nullptr },
 #endif
 #if USE(GSTREAMER)

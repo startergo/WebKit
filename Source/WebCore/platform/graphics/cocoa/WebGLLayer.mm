@@ -91,7 +91,12 @@ namespace {
 #if USE(OPENGL) || USE(ANGLE)
     self.contentsOpaque = !attributes.alpha;
     self.transform = CATransform3DIdentity;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     self.contentsScale = _devicePixelRatio;
+#else
+    /* [leopard] CALayer.contentsScale is 10.7+; 10.6 is always 1.0 (no HiDPI). */
+    UNUSED_PARAM(_devicePixelRatio);
+#endif
 #else
     self.opaque = !attributes.alpha;
 #endif

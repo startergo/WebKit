@@ -1,0 +1,10 @@
+diff a/Source/WTF/wtf/spi/darwin/XPCSPI.h b/Source/WTF/wtf/spi/darwin/XPCSPI.h	(rejected hunks)
+@@ -141,7 +144,7 @@ void xpc_dictionary_set_mach_send(xpc_object_t, const char*, mach_port_t);
+ 
+ void xpc_connection_set_bootstrap(xpc_connection_t, xpc_object_t bootstrap);
+ xpc_object_t xpc_copy_bootstrap(void);
+-void xpc_connection_set_oneshot_instance(xpc_connection_t, uuid_t instance);
++void xpc_connection_set_oneshot_instance(xpc_connection_t, const unsigned char instance[16]);
+ 
+ #if OS_OBJECT_USE_OBJC_RETAIN_RELEASE
+ #if !defined(xpc_retain)

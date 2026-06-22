@@ -34,27 +34,52 @@ namespace WTF {
 
 static bool hasEntitlement(SecTaskRef task, const char* entitlement)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (!task)
         return false;
     auto string = adoptCF(CFStringCreateWithCStringNoCopy(kCFAllocatorDefault, entitlement, kCFStringEncodingASCII, kCFAllocatorNull));
     auto value = adoptCF(SecTaskCopyValueForEntitlement(task, string.get(), nullptr));
     return value && CFGetTypeID(value.get()) == CFBooleanGetTypeID() && CFBooleanGetValue(static_cast<CFBooleanRef>(value.get()));
+#else
+    /* [leopard] SecTask entitlement APIs are 10.7+; no code-signing entitlements on 10.6. */
+    UNUSED_PARAM(task);
+    UNUSED_PARAM(entitlement);
+    return false;
+#endif
 }
 
 bool hasEntitlement(audit_token_t token, const char* entitlement)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     return hasEntitlement(adoptCF(SecTaskCreateWithAuditToken(kCFAllocatorDefault, token)).get(), entitlement);
+#else
+    UNUSED_PARAM(token);
+    UNUSED_PARAM(entitlement);
+    return false;
+#endif
 }
 
 bool hasEntitlement(xpc_connection_t connection, const char *entitlement)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     auto value = adoptOSObject(xpc_connection_copy_entitlement_value(connection, entitlement));
     return value && xpc_get_type(value.get()) == XPC_TYPE_BOOL && xpc_bool_get_value(value.get());
+#else
+    /* [leopard] XPC entitlement APIs are 10.7+. */
+    UNUSED_PARAM(connection);
+    UNUSED_PARAM(entitlement);
+    return false;
+#endif
 }
 
 bool processHasEntitlement(const char* entitlement)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     return hasEntitlement(adoptCF(SecTaskCreateFromSelf(kCFAllocatorDefault)).get(), entitlement);
+#else
+    UNUSED_PARAM(entitlement);
+    return false;
+#endif
 }
 
 } // namespace WTF

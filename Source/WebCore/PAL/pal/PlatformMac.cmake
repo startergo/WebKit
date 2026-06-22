@@ -1,11 +1,11 @@
 list(APPEND PAL_PUBLIC_HEADERS
     avfoundation/MediaTimeAVFoundation.h
 
-    cf/CoreMediaSoftLink.h
+    # [leopard] removed (10.6 lacks framework): cf/CoreMediaSoftLink.h
 
     cocoa/AppSSOSoftLink.h
-    cocoa/AVFoundationSoftLink.h
-    cocoa/MediaToolboxSoftLink.h
+    # [leopard] removed (10.6 lacks framework): cocoa/AVFoundationSoftLink.h
+    # [leopard] removed (10.6 lacks framework): cocoa/MediaToolboxSoftLink.h
     cocoa/PassKitSoftLink.h
 
     mac/LookupSoftLink.h
@@ -113,16 +113,16 @@ list(APPEND PAL_PUBLIC_HEADERS
 )
 
 list(APPEND PAL_SOURCES
-    avfoundation/MediaTimeAVFoundation.cpp
+    # [leopard] removed (10.6 lacks framework): avfoundation/MediaTimeAVFoundation.cpp
 
-    cf/CoreMediaSoftLink.cpp
+    # [leopard] removed (10.6 lacks framework): cf/CoreMediaSoftLink.cpp
 
     cocoa/AppSSOSoftLink.mm
-    cocoa/AVFoundationSoftLink.mm
+    # [leopard] removed (10.6 lacks framework): cocoa/AVFoundationSoftLink.mm
     cocoa/FileSizeFormatterCocoa.mm
     cocoa/Gunzip.cpp
-    cocoa/MediaToolboxSoftLink.cpp
-    cocoa/PassKitSoftLink.mm
+    # [leopard] removed (10.6 lacks framework): cocoa/MediaToolboxSoftLink.cpp
+    # [leopard] removed (10.6 lacks framework): cocoa/PassKitSoftLink.mm
 
     crypto/commoncrypto/CryptoDigestCommonCrypto.cpp
 
@@ -132,7 +132,8 @@ list(APPEND PAL_SOURCES
 
     system/cocoa/SleepDisablerCocoa.cpp
 
-    system/mac/ClockCM.mm
+    # [leopard] removed (10.6 lacks framework): system/mac/ClockCM.mm
+    system/ClockGeneric.cpp  # [leopard] generic Clock backend (no CoreMedia on 10.6)
     system/mac/DefaultSearchProvider.cpp
     system/mac/PopupMenu.mm
     system/mac/SoundMac.mm

@@ -54,7 +54,7 @@ RetainPtr<CFArrayRef> minimizedLanguagesFromLanguages(CFArrayRef languages)
         return languages;
 
 ALLOW_NEW_API_WITHOUT_GUARDS_BEGIN
-    return (__bridge CFArrayRef)[NSLocale minimizedLanguagesFromLanguages:(__bridge NSArray<NSString *> *)languages];
+    return (__bridge CFArrayRef)[NSLocale minimizedLanguagesFromLanguages:(__bridge NSArray *)languages];
 ALLOW_NEW_API_WITHOUT_GUARDS_END
 }
 

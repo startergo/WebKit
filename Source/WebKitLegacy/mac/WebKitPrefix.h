@@ -98,3 +98,14 @@ typedef float CGFloat;
 #endif
 
 #include <wtf/DisallowCType.h>
+
+/* [leopard] AppKit/AppKit-event constants renamed/added after 10.6. Alias the new names to the
+   10.6 originals so WebKitLegacy ObjC sources compile against the 10.6 SDK. */
+#if defined(__OBJC__) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101200
+#ifndef NSEventTypeSystemDefined
+#define NSEventTypeSystemDefined NSSystemDefined
+#endif
+#ifndef NSEventMaskFlagsChanged
+#define NSEventMaskFlagsChanged NSFlagsChangedMask
+#endif
+#endif

@@ -65,7 +65,10 @@ namespace FileSystemImpl {
 String createTemporaryZipArchive(const String& path)
 {
     String temporaryFile;
-    
+#if !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070)
+    // [leopard] NSFileCoordinator is 10.7+ and BOMCopier zip options are absent on
+    // 10.6. Zip-archive generation is used only by specific download/save flows,
+    // not core browsing; return empty on 10.6.
     RetainPtr<NSFileCoordinator> coordinator = adoptNS([[NSFileCoordinator alloc] initWithFilePresenter:nil]);
     [coordinator coordinateReadingItemAtURL:[NSURL fileURLWithPath:path] options:NSFileCoordinatorReadingWithoutChanges error:nullptr byAccessor:[&](NSURL *newURL) mutable {
         CString archivePath([NSTemporaryDirectory() stringByAppendingPathComponent:@"WebKitGeneratedFileXXXXXX"].fileSystemRepresentation);
@@ -84,7 +87,7 @@ String createTemporaryZipArchive(const String& path)
             temporaryFile = String::fromUTF8(archivePath);
         BOMCopierFree(copier);
     }];
-    
+#endif
     return temporaryFile;
 }
 

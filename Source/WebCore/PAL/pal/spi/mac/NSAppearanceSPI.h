@@ -31,10 +31,13 @@
 #import <AppKit/NSAppearance_Private.h>
 #endif
 
+// [leopard] LEOPARD_NSAPPEARANCE: NSAppearance is 10.9+. Skip the category on 10.6.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 @interface NSAppearance ()
 
 - (void)_drawInRect:(NSRect)rect context:(CGContextRef)context options:(NSDictionary *)options;
 
 @end
+#endif
 
 #endif // USE(APPKIT)

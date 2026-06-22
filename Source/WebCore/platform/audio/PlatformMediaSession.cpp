@@ -26,7 +26,7 @@
 #include "config.h"
 #include "PlatformMediaSession.h"
 
-#if ENABLE(VIDEO) || ENABLE(WEB_AUDIO)
+#if ENABLE(VIDEO) || ENABLE(WEB_AUDIO) || PLATFORM(COCOA)
 #include "HTMLMediaElement.h"
 #include "Logging.h"
 #include "MediaPlayer.h"

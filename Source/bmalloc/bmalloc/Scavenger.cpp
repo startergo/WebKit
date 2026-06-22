@@ -76,7 +76,7 @@ Scavenger::Scavenger(const LockHolder&)
 {
     BASSERT(!Environment::get()->isDebugHeapEnabled());
 
-#if BOS(DARWIN)
+#if BOS(DARWIN) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
     auto queue = dispatch_queue_create("WebKit Malloc Memory Pressure Handler", DISPATCH_QUEUE_SERIAL);
     m_pressureHandlerDispatchSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYPRESSURE, 0, DISPATCH_MEMORYPRESSURE_CRITICAL, queue);
     dispatch_source_set_event_handler(m_pressureHandlerDispatchSource, ^{
@@ -84,7 +84,7 @@ Scavenger::Scavenger(const LockHolder&)
     });
     dispatch_resume(m_pressureHandlerDispatchSource);
     dispatch_release(queue);
-#endif
+#endif // [leopard-webkit-build] memory-pressure dispatch source is 10.9+
 #if BUSE(PARTIAL_SCAVENGE)
     m_waitTime = std::chrono::milliseconds(m_isInMiniMode ? 200 : 2000);
 #else
@@ -168,14 +168,14 @@ inline void dumpStats()
         fprintf(stderr, "%s %zuMB\n", string, static_cast<size_t>(size) / 1024 / 1024);
     };
 
-#if BOS(DARWIN)
+#if BOS(DARWIN) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
     task_vm_info_data_t vmInfo;
     mach_msg_type_number_t vmSize = TASK_VM_INFO_COUNT;
     if (KERN_SUCCESS == task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)(&vmInfo), &vmSize)) {
         dump("phys_footprint", vmInfo.phys_footprint);
         dump("internal+compressed", vmInfo.internal + vmInfo.compressed);
     }
-#endif
+#endif // [leopard-webkit-build] task_vm_info is 10.9+
 
     dump("bmalloc-freeable", Scavenger::get()->freeableMemory());
     dump("bmalloc-footprint", Scavenger::get()->footprint());

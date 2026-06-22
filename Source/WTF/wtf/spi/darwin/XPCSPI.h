@@ -87,7 +87,10 @@ extern const char * const _xpc_error_key_description;
 
 #if USE(APPLE_INTERNAL_SDK)
 #include <xpc/private.h>
-#else
+#elif !defined(DISPATCH_MACH_SEND_POSSIBLE)
+// The 10.6 overlay shim (TargetConditionals_compat.h) defines this as the real
+// dispatch value (0x8000000000000000ULL) for code that doesn't include this SPI
+// header; honor it when present so we don't emit a conflicting enum here.
 enum {
     DISPATCH_MACH_SEND_POSSIBLE = 0x8,
 };
@@ -158,7 +161,12 @@ void xpc_dictionary_set_mach_send(xpc_object_t, const char*, mach_port_t);
 
 void xpc_connection_set_bootstrap(xpc_connection_t, xpc_object_t);
 xpc_object_t xpc_copy_bootstrap();
+// [leopard-webkit-build] Declared by the overlay's TargetConditionals_compat.h
+// with a const-qualified array param; redeclaring with uuid_t conflicts. Skip
+// when the overlay already provides it.
+#ifndef _XPC_COMPAT_DEFINED
 void xpc_connection_set_oneshot_instance(xpc_connection_t, uuid_t instance);
+#endif
 
 void xpc_array_append_value(xpc_object_t xarray, xpc_object_t value);
 xpc_object_t xpc_array_get_value(xpc_object_t xarray, size_t index);

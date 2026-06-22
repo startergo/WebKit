@@ -33,6 +33,7 @@
 #import "ScrollingTree.h"
 #import "ScrollingTreeFrameScrollingNode.h"
 #import "ScrollingTreeScrollingNode.h"
+#import "ScrollingStateFrameScrollingNode.h"
 #import <QuartzCore/QuartzCore.h>
 #import <pal/spi/mac/NSScrollerImpSPI.h>
 

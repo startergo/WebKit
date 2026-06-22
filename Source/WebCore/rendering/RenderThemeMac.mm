@@ -106,6 +106,18 @@
 
 #endif // ENABLE(SERVICE_CONTROLS)
 
+// [leopard-webkit-build] Forward declarations for 10.8+/10.9+ APIs absent from the
+// 10.6 SDK. Placed AFTER all imports so CG/CT types are already defined. Definitions
+// in sdk_stubs_605.mm.
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1080
+extern "C" CFTypeRef CFAutorelease(CFTypeRef cf);
+typedef unsigned int CTLineBoundsOptions;
+extern "C" CGRect CTLineGetBoundsWithOptions(CTLineRef, CTLineBoundsOptions);
+#endif
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1090
+extern "C" CGPathRef CGPathCreateWithRect(CGRect, const CGAffineTransform*);
+#endif
+
 // FIXME: This should go into an SPI.h file in the spi directory.
 @interface NSTextFieldCell ()
 - (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus;
@@ -295,13 +307,16 @@ NSView *RenderThemeMac::documentViewFor(const RenderObject& o) const
     return ThemeMac::ensuredView(&o.view().frameView(), states);
 }
 
+#if ENABLE(VIDEO) // [leopard] match the ENABLE(VIDEO)-gated declaration
 String RenderThemeMac::mediaControlsStyleSheet()
 {
     if (m_legacyMediaControlsStyleSheet.isEmpty())
         m_legacyMediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
     return m_legacyMediaControlsStyleSheet;
 }
+#endif // ENABLE(VIDEO) [leopard]
 
+#if ENABLE(VIDEO) // [leopard] match the ENABLE(VIDEO)-gated declaration
 String RenderThemeMac::modernMediaControlsStyleSheet()
 {
     if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
@@ -311,6 +326,7 @@ String RenderThemeMac::modernMediaControlsStyleSheet()
     }
     return emptyString();
 }
+#endif // ENABLE(VIDEO) [leopard]
 
 void RenderThemeMac::purgeCaches()
 {
@@ -322,6 +338,7 @@ void RenderThemeMac::purgeCaches()
     RenderTheme::purgeCaches();
 }
 
+#if ENABLE(VIDEO) // [leopard] match the ENABLE(VIDEO)-gated declaration
 String RenderThemeMac::mediaControlsScript()
 {
     if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
@@ -342,7 +359,9 @@ String RenderThemeMac::mediaControlsScript()
     }
     return m_legacyMediaControlsScript;
 }
+#endif // ENABLE(VIDEO) [leopard]
 
+#if ENABLE(VIDEO) // [leopard] match the ENABLE(VIDEO)-gated declaration
 String RenderThemeMac::mediaControlsBase64StringForIconNameAndType(const String& iconName, const String& iconType)
 {
     if (!RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
@@ -352,6 +371,7 @@ String RenderThemeMac::mediaControlsBase64StringForIconNameAndType(const String&
     NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
     return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:iconType inDirectory:directory]] base64EncodedStringWithOptions:0];
 }
+#endif // ENABLE(VIDEO) [leopard]
 
 #if ENABLE(SERVICE_CONTROLS)
 

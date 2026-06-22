@@ -70,7 +70,13 @@ WTF_EXTERN_C_END
 #endif // USE(APPLE_INTERNAL_SDK)
 
 typedef struct __SecTask *SecTaskRef;
+// [leopard-webkit-build] SecTrustRef is already defined by the 10.6 SDK as
+// (struct OpaqueSecTrustRef *); don't redefine it. SecAccessControlRef is 10.10+,
+// forward-declare it so the SPI prototypes below compile (unused on 10.6).
+#if !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1090)
 typedef struct __SecTrust *SecTrustRef;
+#endif
+typedef struct __SecAccessControl *SecAccessControlRef;
 
 WTF_EXTERN_C_BEGIN
 

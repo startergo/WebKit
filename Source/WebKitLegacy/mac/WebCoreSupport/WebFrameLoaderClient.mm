@@ -28,6 +28,17 @@
 
 #import "WebFrameLoaderClient.h"
 
+// [leopard-webkit-build] NSScrollElasticity* enum values (10.7+ AppKit) used by
+// -[NSScrollView setVertical/HorizontalScrollElasticity:]. Define the constants
+// so the call sites compile; on 10.6 the methods are dynamically dispatched (no-op
+// — NSScrollView doesn't respond, message is harmlessly dropped).
+#ifndef NSScrollElasticityAutomatic
+#define NSScrollElasticityAutomatic 0
+#endif
+#ifndef NSScrollElasticityNone
+#define NSScrollElasticityNone 1
+#endif
+
 #import "BackForwardList.h"
 #import "DOMElementInternal.h"
 #import "DOMHTMLFormElementInternal.h"

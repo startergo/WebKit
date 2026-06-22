@@ -26,7 +26,8 @@
 #import "config.h"
 #import "MediaSelectionGroupAVFObjC.h"
 
-#if ENABLE(VIDEO_TRACK)
+// [leopard-webkit-build] Gate under USE(AVFOUNDATION) — imports AVFoundation (10.7+).
+#if ENABLE(VIDEO_TRACK) && USE(AVFOUNDATION)
 
 #import <AVFoundation/AVAsset.h>
 #import <AVFoundation/AVMediaSelectionGroup.h>

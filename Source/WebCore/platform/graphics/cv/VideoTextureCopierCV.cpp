@@ -24,6 +24,15 @@
  */
 
 #include "config.h"
+
+// [leopard-webkit-build] VideoTextureCopierCV is the WebGL↔CoreVideo texture-copy
+// path; it references CoreVideo pixel-format constants absent from the 10.6 SDK and
+// only makes sense with USE(AVFOUNDATION) (10.7+). Gate the whole body so it compiles
+// to an empty .o on 10.6.
+// .o on VIDEO=0 — the sole consumer (GraphicsContext3D video-texture upload) is itself
+// ENABLE(VIDEO)-gated.
+#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+
 #include "VideoTextureCopierCV.h"
 
 #include "FourCC.h"
@@ -1064,3 +1073,5 @@ bool VideoTextureCopierCV::copyVideoTextureToPlatformTexture(PlatformGLObject vi
 }
 
 }
+
+#endif // ENABLE(VIDEO)

@@ -45,6 +45,12 @@ void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
     }).get());
 }
 
+// [leopard-webkit-build] QOS classes are 10.10+ and HAVE(QOS_CLASSES) is forced
+// off for the 10.6 build, so Thread::adjustedQOSClass and the
+// dispatch_queue_attr_make_with_qos_class API are unavailable. Guard the whole
+// QOS path; on 10.6 the work queue is created without QOS attributes and runs at
+// default priority (functionally correct, just no priority hinting).
+#if HAVE(QOS_CLASSES)
 static dispatch_qos_class_t dispatchQOSClass(WorkQueue::QOS qos)
 {
     switch (qos) {
@@ -60,11 +66,16 @@ static dispatch_qos_class_t dispatchQOSClass(WorkQueue::QOS qos)
         return Thread::adjustedQOSClass(QOS_CLASS_BACKGROUND);
     }
 }
+#endif
 
 void WorkQueue::platformInitialize(const char* name, Type type, QOS qos)
 {
     dispatch_queue_attr_t attr = type == Type::Concurrent ? DISPATCH_QUEUE_CONCURRENT : DISPATCH_QUEUE_SERIAL;
+#if HAVE(QOS_CLASSES)
     attr = dispatch_queue_attr_make_with_qos_class(attr, dispatchQOSClass(qos), 0);
+#else
+    (void)qos; // [leopard] no QOS attrs on 10.6; queue runs at default priority
+#endif
     m_dispatchQueue = dispatch_queue_create(name, attr);
     dispatch_set_context(m_dispatchQueue, this);
 }

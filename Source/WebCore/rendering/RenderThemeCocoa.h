@@ -42,7 +42,9 @@ private:
 #endif
 
 protected:
+#if ENABLE(VIDEO)
     String mediaControlsFormattedStringForDuration(double) override;
+#endif
     RetainPtr<NSDateComponentsFormatter> m_durationFormatter;
 };
 

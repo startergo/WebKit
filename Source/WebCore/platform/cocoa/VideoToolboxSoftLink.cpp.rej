@@ -1,0 +1,7 @@
+diff a/Source/WebCore/platform/cocoa/VideoToolboxSoftLink.cpp b/Source/WebCore/platform/cocoa/VideoToolboxSoftLink.cpp	(rejected hunks)
+@@ -50,3 +55,5 @@ SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, VideoToolbox, kVTDecompressionPropertyKey
+ SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, VideoToolbox, kVTImageRotationPropertyKey_EnableHighSpeedTransfer, CFStringRef)
+ SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, VideoToolbox, kVTImageRotationPropertyKey_FlipHorizontalOrientation, CFStringRef)
+ SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, VideoToolbox, kVTImageRotationPropertyKey_FlipVerticalOrientation, CFStringRef)
++
++#endif // ENABLE(VIDEO)

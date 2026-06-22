@@ -31,6 +31,8 @@
 #import "ScrollingStateOverflowScrollProxyNode.h"
 #import "ScrollingStateTree.h"
 #import "ScrollingTree.h"
+#import "ScrollingTreeOverflowScrollingNode.h"
+#import "Logging.h"
 #import "WebCoreCALayerExtras.h"
 
 namespace WebCore {

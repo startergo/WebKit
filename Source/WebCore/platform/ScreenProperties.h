@@ -106,6 +106,7 @@ void ScreenData::encode(Encoder& encoder) const
         }
 
         // Failing that, just encode the ICC data.
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
         if (auto profileData = adoptCF(CGColorSpaceCopyICCData(colorSpace.get()))) {
             Vector<uint8_t> iccData;
             iccData.append(CFDataGetBytePtr(profileData.get()), CFDataGetLength(profileData.get()));
@@ -114,6 +115,7 @@ void ScreenData::encode(Encoder& encoder) const
             encoder << iccData;
             return;
         }
+#endif
     }
 
     // The color space was null or failed to be encoded.
@@ -200,8 +202,15 @@ Optional<ScreenData> ScreenData::decode(Decoder& decoder)
         if (!iccData)
             return WTF::nullopt;
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
         auto colorSpaceData = adoptCF(CFDataCreate(kCFAllocatorDefault, iccData->data(), iccData->size()));
         cgColorSpace = adoptCF(CGColorSpaceCreateWithICCData(colorSpaceData.get()));
+#else
+        /* [leopard] CGColorSpaceCreateWithICCData is 10.11+. 10.6 encoders never emit
+           ColorSpaceType::Data (the ICC encode path is compiled out), so this branch is
+           effectively unreachable; fall back to device RGB to keep the type valid. */
+        cgColorSpace = adoptCF(CGColorSpaceCreateDeviceRGB());
+#endif
         break;
     }
     }

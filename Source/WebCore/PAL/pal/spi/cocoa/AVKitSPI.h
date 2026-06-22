@@ -207,7 +207,8 @@ NS_ASSUME_NONNULL_END
 #endif // USE(APPLE_INTERNAL_SDK)
 #endif // PLATFORM(IOS_FAMILY)
 
-#if PLATFORM(MAC)
+// [leopard] LEOPARD_AVKIT_MAC: AVKit on Mac is 10.9+. Skip the whole Mac AVKit block on 10.6.
+#if PLATFORM(MAC) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
 #if USE(APPLE_INTERNAL_SDK)
 #import <AVKit/AVPlayerView_Private.h>
 #else
@@ -278,6 +279,9 @@ NS_ASSUME_NONNULL_BEGIN
 NS_ASSUME_NONNULL_END
 
 #if PLATFORM(MAC) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 101202
+@class NSTouchBar; // [leopard] NSTouchBar is 10.12.2+; forward-declare so AVKit SPI property types resolve.
+#endif
 
 OBJC_CLASS AVFunctionBarPlaybackControlsProvider;
 OBJC_CLASS AVFunctionBarScrubber;

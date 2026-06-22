@@ -1,0 +1,28 @@
+diff a/Source/WebCore/platform/graphics/ca/cocoa/PlatformCALayerCocoa.mm b/Source/WebCore/platform/graphics/ca/cocoa/PlatformCALayerCocoa.mm	(rejected hunks)
+@@ -883,15 +895,26 @@ void PlatformCALayerCocoa::setTimeOffset(CFTimeInterval value)
+ 
+ float PlatformCALayerCocoa::contentsScale() const
+ {
++#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+     return [m_layer contentsScale];
++#else
++    // CALayer.contentsScale is 10.7+; on 10.6 the layer's backing store is always
++    // at a 1.0 scale (no Retina), so report the effective scale as 1.0.
++    return 1.0f;
++#endif
+ }
+ 
+ void PlatformCALayerCocoa::setContentsScale(float value)
+ {
+     BEGIN_BLOCK_OBJC_EXCEPTIONS
++#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+     [m_layer setContentsScale:value];
+ #if PLATFORM(IOS)
+     [m_layer setRasterizationScale:value];
++#endif
++#else
++    // CALayer.contentsScale is 10.7+ — no-op on 10.6 (always 1.0).
++    UNUSED_PARAM(value);
+ #endif
+     END_BLOCK_OBJC_EXCEPTIONS
+ }

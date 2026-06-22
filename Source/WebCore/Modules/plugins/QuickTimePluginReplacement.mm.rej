@@ -1,0 +1,11 @@
+diff a/Source/WebCore/Modules/plugins/QuickTimePluginReplacement.mm b/Source/WebCore/Modules/plugins/QuickTimePluginReplacement.mm	(rejected hunks)
+@@ -25,7 +25,8 @@
+ 
+ #import "config.h"
+ 
+-#if ENABLE(MEDIA_CONTROLS_SCRIPT)
++// [leopard-webkit-build] Gate under USE(AVFOUNDATION) — imports AVFoundation (10.7+).
++#if ENABLE(MEDIA_CONTROLS_SCRIPT) && USE(AVFOUNDATION)
+ 
+ #import "QuickTimePluginReplacement.h"
+ 

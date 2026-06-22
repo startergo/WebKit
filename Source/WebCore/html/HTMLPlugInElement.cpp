@@ -336,7 +336,8 @@ static Vector<ReplacementPlugin*>& registeredPluginReplacements()
     enginesQueried = true;
 
 #if PLATFORM(COCOA)
-    QuickTimePluginReplacement::registerPluginReplacement(registrar);
+    // [leopard] QuickTimePluginReplacement excluded (AVFoundation/AVMetadataItem, 10.7+) - not registered on 10.6
+    // QuickTimePluginReplacement::registerPluginReplacement(registrar);
     YouTubePluginReplacement::registerPluginReplacement(registrar);
 #endif
     

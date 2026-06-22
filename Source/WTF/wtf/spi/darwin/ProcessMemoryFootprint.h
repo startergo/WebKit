@@ -48,6 +48,14 @@ public:
     uint64_t current;
     uint64_t peak;
 
+// [leopard] proc_pid_rusage / rusage_info_v* are 10.9+. On 10.6 force the no-op path.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED < 1090
+#define LEOPARD_NO_RUSAGE 1
+#undef HAS_MAX_FOOTPRINT
+#undef HAS_ONLY_PHYS_FOOTPRINT
+#undef HAS_RESET_FOOTPRINT_INTERVAL
+#endif
+
     static ProcessMemoryFootprint now()
     {
 #ifdef HAS_MAX_FOOTPRINT

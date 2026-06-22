@@ -56,7 +56,7 @@ PlatformMediaSessionManager* PlatformMediaSessionManager::sharedManagerIfExists(
     return sharedPlatformMediaSessionManager().get();
 }
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) || defined(LEOPARD_WEBKIT) /* [leopard] generic session manager when no AVFoundation backend */
 std::unique_ptr<PlatformMediaSessionManager> PlatformMediaSessionManager::create()
 {
     return std::unique_ptr<PlatformMediaSessionManager>(new PlatformMediaSessionManager);

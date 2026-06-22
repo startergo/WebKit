@@ -4393,7 +4393,11 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     ASSERT(![self _webView] || [self _isTopHTMLView]);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     NSPoint windowLocation = [self.window convertRectFromScreen:{ screenPoint, NSZeroSize }].origin;
+#else
+    NSPoint windowLocation = [self.window convertScreenToBase:screenPoint];
+#endif
 
     if (auto* page = core([self _webView]))
         page->dragController().dragEnded();
@@ -4467,8 +4471,10 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
 #if PLATFORM(MAC)
     NSEvent *lastPressureEvent = [[self _webView] _pressureEvent];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (event.phase != NSEventPhaseChanged && event.phase != NSEventPhaseBegan && event.phase != NSEventPhaseEnded)
         return;
+#endif
 
     RefPtr<WebCore::Frame> coreFrame = core([self _frame]);
     if (!coreFrame)
@@ -6176,7 +6182,13 @@ static BOOL writingDirectionKeyBindingsEnabled()
     if (_private) {
         ASSERT(!_private->drawingIntoLayer);
         _private->drawingIntoLayer = YES;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+        // [leopard-webkit-build] CALayer -drawsAsynchronously is 10.8+; on 10.6
+        // there's no async drawing → always false.
         _private->drawingIntoAcceleratedLayer = [layer drawsAsynchronously];
+#else
+        _private->drawingIntoAcceleratedLayer = NO;
+#endif
     }
 
     [super drawLayer:layer inContext:ctx];
@@ -6254,7 +6266,9 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
         NSUnderlineColorAttributeName,
         NSMarkedClauseSegmentAttributeName,
         NSTextInputReplacementRangeAttributeName,
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         NSTextAlternativesAttributeName,
+#endif
         NSTextInsertionUndoableAttributeName,
         nil];
     LOG(TextInput, "validAttributesForMarkedText -> (...)");
@@ -6295,7 +6309,11 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 
     if (window) {
         NSRect screenRect = { thePoint, NSZeroSize };
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         thePoint = [window convertRectFromScreen:screenRect].origin;
+#else
+        thePoint = [window convertScreenToBase:screenRect.origin];
+#endif
     }
     thePoint = [self convertPoint:thePoint fromView:nil];
 
@@ -6338,7 +6356,11 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 
     NSWindow *window = [self window];
     if (window)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         resultRect.origin = [window convertRectToScreen:resultRect].origin;
+#else
+        resultRect.origin = [window convertBaseToScreen:resultRect.origin];
+#endif
     
     LOG(TextInput, "firstRectForCharacterRange:(%u, %u) -> (%f, %f, %f, %f)", theRange.location, theRange.length, resultRect.origin.x, resultRect.origin.y, resultRect.size.width, resultRect.size.height);
     return resultRect;

@@ -33,16 +33,22 @@ namespace WebCore {
 
 Optional<uint64_t> PerformanceLogging::physicalFootprint()
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     task_vm_info_data_t vmInfo;
     mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
     kern_return_t result = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &vmInfo, &count);
     if (result != KERN_SUCCESS)
         return WTF::nullopt;
     return vmInfo.phys_footprint;
+#else
+    /* [leopard] task_vm_info / phys_footprint are 10.9+; unavailable on 10.6. */
+    return WTF::nullopt;
+#endif
 }
 
 void PerformanceLogging::getPlatformMemoryUsageStatistics(HashMap<const char*, size_t>& stats)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     task_vm_info_data_t vmInfo;
     mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
     kern_return_t err = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &vmInfo, &count);
@@ -53,6 +59,9 @@ void PerformanceLogging::getPlatformMemoryUsageStatistics(HashMap<const char*, s
     stats.add("phys_footprint", static_cast<size_t>(vmInfo.phys_footprint));
     stats.add("resident_size", static_cast<size_t>(vmInfo.resident_size));
     stats.add("virtual_size", static_cast<size_t>(vmInfo.virtual_size));
+#else
+    UNUSED_PARAM(stats);
+#endif
 }
 
 }

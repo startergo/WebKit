@@ -171,4 +171,13 @@ __attribute__((availability(macosx, obsoleted = 10.13))) __attribute__((availabi
 bool CTFontIsAppleColorEmoji(CTFontRef);
 CTFontRef CTFontCreateForCharacters(CTFontRef currentFont, const UTF16Char *characters, CFIndex length, CFIndex *coveredLength);
 
+// [leopard-webkit-build] kCTFontOpenTypeFeatureTag/Value (10.10+ CoreText attribute
+// keys) and CTFontDrawGlyphs (10.7+ public CoreText glyph-drawing API) are absent
+// from the 10.6 SDK. sdk_stubs_605.mm supplies their DEFINITIONS (working 10.6
+// bridges); declare them here so FontCocoa.mm / FontCacheCoreText.cpp /
+// FontCascadeCocoa.mm compile.
+extern const CFStringRef kCTFontOpenTypeFeatureTag;
+extern const CFStringRef kCTFontOpenTypeFeatureValue;
+void CTFontDrawGlyphs(CTFontRef font, const CGGlyph* glyphs, const CGPoint* positions, size_t count, CGContextRef context);
+
 WTF_EXTERN_C_END

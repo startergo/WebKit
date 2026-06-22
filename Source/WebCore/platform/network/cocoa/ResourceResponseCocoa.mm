@@ -91,6 +91,7 @@ CertificateInfo ResourceResponse::platformCertificateInfo() const
     auto trust = checked_cf_cast<SecTrustRef>(trustValue);
 
     SecTrustResultType trustResultType;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     OSStatus result = SecTrustGetTrustResult(trust, &trustResultType);
     if (result != errSecSuccess)
         return { };
@@ -99,6 +100,14 @@ CertificateInfo ResourceResponse::platformCertificateInfo() const
         if (!SecTrustEvaluateWithError(trust, nullptr))
             return { };
     }
+#else
+    /* [leopard] SecTrustGetTrustResult (10.7+) / SecTrustEvaluateWithError (10.12+) are
+       unavailable on 10.6; use the original SecTrustEvaluate which both validates and
+       returns the result type. */
+    OSStatus result = SecTrustEvaluate(trust, &trustResultType);
+    if (result != errSecSuccess)
+        return { };
+#endif
 
 #if HAVE(SEC_TRUST_SERIALIZATION)
     return CertificateInfo(trust);

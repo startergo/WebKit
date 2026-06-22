@@ -25,6 +25,11 @@
 
 #include "config.h"
 
+// [leopard-webkit-build] VideoToolbox.framework is 10.8+ and absent from the 10.6
+// SDK. Gate under USE(VIDEOTOOLBOX) (which is gated ≥10.8 in Platform.h) so the
+// soft-link TU compiles to an empty .o on 10.6 where VideoToolbox doesn't exist.
+#if ENABLE(VIDEO) && USE(VIDEOTOOLBOX)
+
 #include <VideoToolbox/VideoToolbox.h>
 #include <wtf/SoftLinking.h>
 

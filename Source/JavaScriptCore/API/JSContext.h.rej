@@ -1,0 +1,9 @@
+diff a/Source/JavaScriptCore/API/JSContext.h b/Source/JavaScriptCore/API/JSContext.h	(rejected hunks)
+@@ -39,6 +39,7 @@
+  JavaScript execution takes place within a context, and all JavaScript values
+  are tied to a context.
+ */
++__attribute__((visibility("default")))
+ NS_CLASS_AVAILABLE(10_9, 7_0)
+ @interface JSContext : NSObject
+ 

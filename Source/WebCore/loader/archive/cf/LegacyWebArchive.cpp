@@ -394,7 +394,7 @@ RetainPtr<CFDataRef> LegacyWebArchive::rawDataRepresentation()
     return plistData;
 }
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) || defined(LEOPARD_WEBKIT) /* [leopard] LegacyWebArchiveMac.mm excluded (10.8+ NSKeyedUnarchiver); use no-op stubs */
 
 ResourceResponse LegacyWebArchive::createResourceResponseFromMacArchivedData(CFDataRef responseData)
 {

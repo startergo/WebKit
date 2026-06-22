@@ -24,6 +24,15 @@
  */
 
 #import "config.h"
+
+// [leopard-webkit-build] This entire TU (the WebCore NSURLSession shim that backs
+// AVFoundation's media resource loading) depends on the PlatformMediaResource{Loader,Client}
+// types, which platform/graphics/PlatformMediaResourceLoader.h defines only under
+// #if ENABLE(VIDEO). On the 10.6 cross-build ENABLE(VIDEO)=0 (no AVFoundation/CoreMedia),
+// so the types are absent; gate the whole body to match. The sole symbol consumer
+// (MediaPlayerPrivateAVFoundationObjC.mm) is itself ENABLE(VIDEO)-gated, so this is safe.
+#if ENABLE(VIDEO)
+
 #import "WebCoreNSURLSession.h"
 
 #import "CachedResourceRequest.h"
@@ -648,7 +657,7 @@ void WebCoreNSURLSessionDataTaskClient::loadFinished(PlatformMediaResource& reso
     if (_resource) {
         _resource->stop();
         _resource->setClient(nullptr);
-        _resource = nil;
+        _resource = nullptr;
     }
 }
 

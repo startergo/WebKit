@@ -26,6 +26,9 @@
 #import <JavaScriptCore/JavaScript.h>
 #import <JavaScriptCore/WebKitAvailability.h>
 
+#ifndef JSContext_h_LEOPARD_GUARD
+#define JSContext_h_LEOPARD_GUARD
+
 #if JSC_OBJC_API_ENABLED
 
 @class JSScript, JSVirtualMachine, JSValue, JSContext;
@@ -231,3 +234,5 @@ JSC_CLASS_AVAILABLE(macos(10.9), ios(7.0))
 @end
 
 #endif
+
+#endif // JSContext_h_LEOPARD_GUARD

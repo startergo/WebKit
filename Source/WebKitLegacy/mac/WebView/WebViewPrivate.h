@@ -190,7 +190,9 @@ typedef enum {
 @property (nonatomic, retain) UIImage *dataInteractionImage;
 @property (nonatomic, assign) CGRect selectionRectInRootViewCoordinates;
 @property (nonatomic, assign) CGRect textBoundingRectInRootViewCoordinates;
-@property (nonatomic, retain) NSArray<NSValue *> *textRectsInBoundingRectCoordinates; // CGRect values
+// [leopard-webkit-build] NSArray lightweight generics require the 10.11+ SDK; the
+// 10.6 SDK's NSArray is non-parameterized, so drop the type argument.
+@property (nonatomic, retain) NSArray *textRectsInBoundingRectCoordinates; // CGRect values
 @property (nonatomic, assign) CGFloat contentImageScaleFactor;
 @property (nonatomic, retain) UIImage *contentImageWithHighlight;
 @property (nonatomic, retain) UIImage *contentImage;

@@ -1,0 +1,10 @@
+diff a/Source/WebCore/platform/audio/PlatformMediaSessionManager.cpp b/Source/WebCore/platform/audio/PlatformMediaSessionManager.cpp	(rejected hunks)
+@@ -33,7 +33,7 @@
+ 
+ namespace WebCore {
+ 
+-#if ENABLE(VIDEO) || ENABLE(WEB_AUDIO)
++#if ENABLE(VIDEO) || ENABLE(WEB_AUDIO) || PLATFORM(COCOA)
+ 
+ #if !PLATFORM(COCOA)
+ static PlatformMediaSessionManager* platformMediaSessionManager = nullptr;

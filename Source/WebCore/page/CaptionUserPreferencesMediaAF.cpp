@@ -25,7 +25,8 @@
 
 #include "config.h"
 
-#if ENABLE(VIDEO_TRACK)
+// [leopard-webkit-build] Gate under USE(AVFOUNDATION) — uses MediaToolbox/AVF SPIs (10.7+).
+#if ENABLE(VIDEO_TRACK) && USE(AVFOUNDATION)
 
 #if !USE(DIRECT2D)
 

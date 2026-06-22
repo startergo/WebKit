@@ -52,7 +52,10 @@ constexpr unsigned urlBytesBufferLength = 2048;
 //    WebKit was compiled.
 // This is only really important for platforms that load an external ICU whitelist.
 // Not important for the compiled-in one.
-constexpr auto scriptCodeLimit = static_cast<UScriptCode>(256);
+// [leopard] Older clang/ICU rejects static_cast<UScriptCode>(256) in a constexpr
+// (the ICU enum has no enumerator at 256). Use a plain integer constant for the
+// array bound; the value is just an upper limit on script codes.
+static const int scriptCodeLimit = 256;
 
 static uint32_t IDNScriptWhiteList[(scriptCodeLimit + 31) / 32];
 

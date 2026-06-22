@@ -112,6 +112,11 @@
 
 WTF_EXTERN_C_BEGIN
 
+/* [leopard] The force-included TargetConditionals_compat.h overlay provides a static inline
+   dyld_get_program_sdk_version() 10.6 stub and defines _DYLD_COMPAT_DEFINED. Skip this extern
+   when that's present so the inline is used instead of an unresolved external symbol. */
+#ifndef _DYLD_COMPAT_DEFINED
 uint32_t dyld_get_program_sdk_version();
+#endif
 
 WTF_EXTERN_C_END

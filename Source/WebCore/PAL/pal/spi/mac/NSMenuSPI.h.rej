@@ -1,0 +1,18 @@
+diff a/Source/WebCore/PAL/pal/spi/mac/NSMenuSPI.h b/Source/WebCore/PAL/pal/spi/mac/NSMenuSPI.h	(rejected hunks)
+@@ -57,6 +57,16 @@ enum {
+ 
+ @class QLPreviewMenuItem;
+ 
++// NSUserInterfaceItemIdentification (AppKit 10.8+) is absent from the 10.6 SDK;
++// declare the minimal protocol so the NSMenuItem() conformance below compiles.
++// Macro-guarded so a real AppKit declaration elsewhere is never redefined.
++#ifndef WebKitNSUserInterfaceItemIdentification
++#define WebKitNSUserInterfaceItemIdentification
++@protocol NSUserInterfaceItemIdentification <NSObject>
++@property (nullable, strong) id identifier;
++@end
++#endif
++
+ #if __MAC_OS_X_VERSION_MAX_ALLOWED < 101200
+ @interface NSMenuItem () <NSUserInterfaceItemIdentification>
+ #else 

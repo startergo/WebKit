@@ -35,6 +35,17 @@
 #include "IntRect.h"
 #include "StrokeStyleApplier.h"
 #include <pal/spi/cg/CoreGraphicsSPI.h>
+
+/* [leopard] CGPath functions introduced after 10.6 (impls in sdk_stubs_605.mm). Declared here
+   where CoreGraphics types are in scope (the force-included supplement can't reference CG types). */
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 101100
+extern "C" {
+CGPathRef CGPathCreateWithRect(CGRect rect, const CGAffineTransform *transform);
+void CGPathAddRoundedRect(CGMutablePathRef path, const CGAffineTransform *transform, CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight);
+CGMutablePathRef CGPathCreateMutableCopyByTransformingPath(CGPathRef path, const CGAffineTransform *transform);
+}
+#endif
+
 #include <wtf/MathExtras.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>

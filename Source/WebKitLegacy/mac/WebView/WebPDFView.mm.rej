@@ -1,0 +1,14 @@
+diff a/Source/WebKitLegacy/mac/WebView/WebPDFView.mm b/Source/WebKitLegacy/mac/WebView/WebPDFView.mm	(rejected hunks)
+@@ -1073,7 +1073,11 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
+ 
+     // Delegate method sent when the user requests downloading the PDF file to disk. We pass NO for
+     // showingPanel: so that the PDF file is saved to the standard location without user intervention.
+-    CallUIDelegate([self _webView], @selector(webView:saveFrameView:showingPanel:), [[dataSource webFrame] frameView], NO);
++    // [leopard-webkit-build] Bind NO to a named BOOL variable so the CallUIDelegate overload
++    // (WebView*, SEL, id, BOOL) is selected unambiguously (modern clang ranks the BOOL vs
++    // NSUInteger candidates as a tie for a bare `NO` literal against the 10.6 SDK's type defs).
++    BOOL showingPanel = NO;
++    CallUIDelegate([self _webView], @selector(webView:saveFrameView:showingPanel:), [[dataSource webFrame] frameView], showingPanel);
+ }
+ 
+ @end

@@ -35,6 +35,18 @@
 
 #define ENABLE_FMW_FOOTPRINT_COMPARISON 0
 
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+#ifndef DISPATCH_MEMORYPRESSURE_NORMAL
+#define DISPATCH_MEMORYPRESSURE_NORMAL   0x1
+#endif
+#ifndef DISPATCH_MEMORYPRESSURE_WARN
+#define DISPATCH_MEMORYPRESSURE_WARN     0x2
+#endif
+#ifndef DISPATCH_MEMORYPRESSURE_CRITICAL
+#define DISPATCH_MEMORYPRESSURE_CRITICAL 0x4
+#endif
+#endif
+
 extern "C" void cache_simulate_memory_warning_event(uint64_t);
 
 namespace WTF {
@@ -44,7 +56,9 @@ void MemoryPressureHandler::platformReleaseMemory(Critical critical)
     if (critical == Critical::Yes && (!isUnderMemoryPressure() || m_isSimulatingMemoryPressure)) {
         // libcache listens to OS memory notifications, but for process suspension
         // or memory pressure simulation, we need to prod it manually:
+#if !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070)
         cache_simulate_memory_warning_event(DISPATCH_MEMORYPRESSURE_CRITICAL);
+#endif
     }
 }
 
@@ -74,6 +88,11 @@ void MemoryPressureHandler::install()
 #else // PLATFORM(MAC)
         auto memoryStatusFlags = DISPATCH_MEMORYPRESSURE_CRITICAL;
 #endif
+#if !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070)
+        // DISPATCH_SOURCE_TYPE_MEMORYPRESSURE is 10.7+; 10.6 libdispatch has no
+        // memory-pressure source. Skip registration on 10.6 -- the
+        // notify_register_dispatch("org.WebKit.lowMemory") path below and the
+        // timer fallback still provide pressure handling.
         memoryPressureEventSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYPRESSURE, 0, memoryStatusFlags, m_dispatchQueue);
 
         dispatch_source_set_event_handler(memoryPressureEventSource, ^{
@@ -107,6 +126,9 @@ void MemoryPressureHandler::install()
                 WTFLogAlways("Received memory pressure event %lu vm pressure %d", status, isUnderMemoryPressure());
         });
         dispatch_resume(memoryPressureEventSource);
+#else
+        (void)memoryStatusFlags;
+#endif
     });
 
     // Allow simulation of memory pressure with "notifyutil -p org.WebKit.lowMemory"
@@ -117,7 +139,11 @@ void MemoryPressureHandler::install()
         beginSimulatedMemoryPressure();
 
         WTF::releaseFastMallocFreeMemory();
+#if !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070)
+        // malloc_zone_pressure_relief is a 10.7+ malloc addition; on 10.6 the
+        // bmalloc fast-malloc release above already reclaims the bulk of memory.
         malloc_zone_pressure_relief(nullptr, 0);
+#endif
 
 #if ENABLE(FMW_FOOTPRINT_COMPARISON)
         auto footprintAfter = pagesPerVMTag();

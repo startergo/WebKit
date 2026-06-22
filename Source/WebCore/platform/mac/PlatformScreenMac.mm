@@ -112,7 +112,11 @@ ScreenProperties collectScreenProperties()
 
         int screenDepth = NSBitsPerPixelFromDepth(screen.depth);
         int screenDepthPerComponent = NSBitsPerSampleFromDepth(screen.depth);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
         bool screenSupportsExtendedColor = [screen canRepresentDisplayGamut:NSDisplayGamutP3];
+#else
+        bool screenSupportsExtendedColor = false; /* [leopard] P3 gamut detection is 10.12+ */
+#endif
         bool screenIsMonochrome = CGDisplayUsesForceToGray();
         uint32_t displayMask = CGDisplayIDToOpenGLDisplayMask(displayID);
         IORegistryGPUID gpuID = 0;
@@ -137,8 +141,13 @@ ScreenProperties collectScreenProperties()
 
 void setShouldOverrideScreenSupportsHighDynamicRange(bool shouldOverride, bool supportsHighDynamicRange)
 {
+#if USE(MEDIATOOLBOX)
     if (PAL::isMediaToolboxFrameworkAvailable() && PAL::canLoad_MediaToolbox_MTOverrideShouldPlayHDRVideo())
         PAL::softLink_MediaToolbox_MTOverrideShouldPlayHDRVideo(shouldOverride, supportsHighDynamicRange);
+#else
+    UNUSED_PARAM(shouldOverride);
+    UNUSED_PARAM(supportsHighDynamicRange);
+#endif
 }
 
 uint32_t primaryOpenGLDisplayMask()
@@ -193,6 +202,7 @@ IORegistryGPUID gpuIDForDisplayMask(GLuint displayMask)
     GLint gpuIDLow = 0;
     GLint gpuIDHigh = 0;
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     error = CGLDescribeRenderer(rendererInfo, 0, kCGLRPRegistryIDLow, &gpuIDLow);
     if (error != kCGLNoError) {
         CGLDestroyRendererInfo(rendererInfo);
@@ -204,6 +214,11 @@ IORegistryGPUID gpuIDForDisplayMask(GLuint displayMask)
         CGLDestroyRendererInfo(rendererInfo);
         return 0;
     }
+#else
+    /* [leopard] kCGLRPRegistryIDLow/High are 10.13+; no GPU registry ID on 10.6. */
+    UNUSED_PARAM(gpuIDLow);
+    UNUSED_PARAM(gpuIDHigh);
+#endif
 
     CGLDestroyRendererInfo(rendererInfo);
     return (IORegistryGPUID) gpuIDHigh << 32 | gpuIDLow;
@@ -321,7 +336,11 @@ bool screenSupportsExtendedColor(Widget* widget)
         return data->screenSupportsExtendedColor;
 
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     return [screen(widget) canRepresentDisplayGamut:NSDisplayGamutP3];
+#else
+    return false; /* [leopard] P3 gamut detection is 10.12+ */
+#endif
 }
 
 bool screenSupportsHighDynamicRange(Widget* widget)

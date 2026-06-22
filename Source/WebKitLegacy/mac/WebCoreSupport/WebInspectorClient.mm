@@ -231,7 +231,7 @@ String WebInspectorFrontendClient::localizedStringsURL() const
     if (!path.length)
         return String();
     
-    return [NSURL fileURLWithPath:path isDirectory:NO].absoluteString;
+    return [(NSURL *)[NSURL fileURLWithPath:path isDirectory:NO] absoluteString];
 }
 
 void WebInspectorFrontendClient::bringToFront()
@@ -274,6 +274,7 @@ void WebInspectorFrontendClient::setForcedAppearance(InspectorFrontendClient::Ap
     NSWindow *window = [m_frontendWindowController window];
     ASSERT(window);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     switch (appearance) {
     case InspectorFrontendClient::Appearance::System:
         window.appearance = nil;
@@ -287,6 +288,10 @@ void WebInspectorFrontendClient::setForcedAppearance(InspectorFrontendClient::Ap
         window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
         break;
     }
+#else
+    /* [leopard] NSWindow.appearance / NSAppearanceName* are 10.9+/10.14; no-op on 10.6. */
+    UNUSED_PARAM(appearance);
+#endif
 }
 
 bool WebInspectorFrontendClient::supportsDockSide(DockSide dockSide)
@@ -570,9 +575,14 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     CGFloat approximatelyHalfScreenSize = (window.screen.frame.size.width / 2) - 4;
     CGFloat minimumFullScreenWidth = std::max<CGFloat>(636, approximatelyHalfScreenSize);
     [window setMinFullScreenContentSize:NSMakeSize(minimumFullScreenWidth, minimumWindowHeight)];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    // [leopard-webkit-build] NSWindowCollectionBehaviorFullScreenAllowsTiling +
+    // titlebarAppearsTransparent are 10.10+; on < 10.10 skip (inspector window just
+    // uses standard collection behavior + opaque titlebar).
     [window setCollectionBehavior:([window collectionBehavior] | NSWindowCollectionBehaviorFullScreenAllowsTiling)];
 
     window.titlebarAppearsTransparent = YES;
+#endif
 
     [self setWindow:window];
     [window release];

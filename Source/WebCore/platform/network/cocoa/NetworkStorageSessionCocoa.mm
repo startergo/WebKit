@@ -117,6 +117,7 @@ void NetworkStorageSession::hasCookies(const RegistrableDomain& domain, Completi
     completionHandler(false);
 }
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
 void NetworkStorageSession::setAllCookiesToSameSiteStrict(const RegistrableDomain& domain, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
@@ -147,6 +148,7 @@ void NetworkStorageSession::setAllCookiesToSameSiteStrict(const RegistrableDomai
 #endif
     completionHandler();
 }
+#endif // ENABLE(RESOURCE_LOAD_STATISTICS) [leopard]
 
 void NetworkStorageSession::flushCookieStore()
 {

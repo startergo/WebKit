@@ -1,0 +1,12 @@
+diff a/Source/WebCore/page/Page.cpp b/Source/WebCore/page/Page.cpp	(rejected hunks)
+@@ -70,6 +70,10 @@
+ #include "PageConfiguration.h"
+ #include "PageConsoleClient.h"
+ #include "PageDebuggable.h"
++// [leopard-webkit-build] ApplicationStateChangeListener is used as a complete type
++// at Page.cpp:2366/2385 (member access); the forward declaration Page.h ships is
++// insufficient. Include the full definition.
++#include "ApplicationStateChangeListener.h"
+ #include "PageGroup.h"
+ #include "PageOverlayController.h"
+ #include "PerformanceLoggingClient.h"

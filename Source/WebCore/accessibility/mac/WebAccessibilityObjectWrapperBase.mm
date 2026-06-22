@@ -491,7 +491,16 @@ static void convertPathToScreenSpaceFunction(PathConversionInfo& conversion, con
         NSRect nsRect = NSRectFromCGRect(cgRect);
         NSView* view = frameView->documentView();
         ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         nsRect = [[view window] convertRectToScreen:[view convertRect:nsRect toView:nil]];
+#else
+        /* [leopard] 10.6 lacks -convertRectToScreen:; compose it from -convertBaseToScreen:. */
+        {
+            NSRect winRect = [view convertRect:nsRect toView:nil];
+            NSPoint screenOrigin = [[view window] convertBaseToScreen:winRect.origin];
+            nsRect = NSMakeRect(screenOrigin.x, screenOrigin.y, winRect.size.width, winRect.size.height);
+        }
+#endif
         ALLOW_DEPRECATED_DECLARATIONS_END
         return NSRectToCGRect(nsRect);
     }

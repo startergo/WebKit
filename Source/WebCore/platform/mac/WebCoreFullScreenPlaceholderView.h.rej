@@ -1,0 +1,12 @@
+diff a/Source/WebCore/platform/mac/WebCoreFullScreenPlaceholderView.h b/Source/WebCore/platform/mac/WebCoreFullScreenPlaceholderView.h	(rejected hunks)
+@@ -30,6 +30,10 @@
+ 
+ #import <wtf/RetainPtr.h>
+ 
++// [leopard-webkit-build] NSVisualEffectView is 10.10+; forward-declare so RetainPtr
++// resolves. The TU body (WebCoreFullScreenPlaceholderView.mm) is gated ≥10.10.
++@class NSVisualEffectView;
++
+ WEBCORE_EXPORT @interface WebCoreFullScreenPlaceholderView : NSView {
+ @private
+     RetainPtr<NSVisualEffectView> _effectView;

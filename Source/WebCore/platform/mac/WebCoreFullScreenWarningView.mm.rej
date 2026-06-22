@@ -1,0 +1,12 @@
+diff a/Source/WebCore/platform/mac/WebCoreFullScreenWarningView.mm b/Source/WebCore/platform/mac/WebCoreFullScreenWarningView.mm	(rejected hunks)
+@@ -24,7 +24,9 @@
+  */
+ 
+ #include "config.h"
+-#if !PLATFORM(IOS)
++// [leopard-webkit-build] WebCoreFullScreenWarningView inherits WebCoreFullScreenPlaceholderView
++// (which inherits NSVisualEffectView on 10.10+). Gate out on < 10.10.
++#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+ 
+ #include "WebCoreFullScreenWarningView.h"
+ 

@@ -1,0 +1,17 @@
+diff a/Source/WebCore/page/AlternativeTextClient.h b/Source/WebCore/page/AlternativeTextClient.h	(rejected hunks)
+@@ -31,8 +31,15 @@
+ 
+ #if PLATFORM(MAC)
+ // Some platforms provide UI for suggesting alternative dictation text.
++// [leopard-webkit-build] NSTextAlternatives + the NSSpellChecker
++// showCorrectionIndicatorOfType: SPI it depends on are 10.8+; gate the feature
++// off for the 10.6 target so AlternativeTextUIController.mm (which #imports
++// <AppKit/NSTextAlternatives.h>) and the matching WebKitLegacy client compile
++// out cleanly. Dictation-alternative indicators are inert on 10.6 anyway.
++#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+ #define USE_DICTATION_ALTERNATIVES 1
+ #endif
++#endif
+ 
+ namespace WebCore {
+ 

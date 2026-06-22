@@ -1,0 +1,68 @@
+diff a/Source/WebCore/html/HTMLAttachmentElement.cpp b/Source/WebCore/html/HTMLAttachmentElement.cpp	(rejected hunks)
+@@ -145,10 +145,15 @@ void HTMLAttachmentElement::invalidateShadowRootChildrenIfNecessary()
+         image->setAttributeWithoutSynchronization(srcAttr, emptyString());
+         image->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone, true);
+     }
++#if ENABLE(VIDEO)
++    // [leopard-webkit-build] HTMLVideoElement is only defined under ENABLE(VIDEO)
++    // (html/HTMLVideoElement.h gates the entire class). On the 10.6 build VIDEO=0,
++    // so the inner-video invalidation path is inert — attachments never host video.
+     if (auto video = innerVideo()) {
+         video->setAttributeWithoutSynchronization(srcAttr, emptyString());
+         video->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone, true);
+     }
++#endif
+ }
+ 
+ RenderAttachment* HTMLAttachmentElement::attachmentRenderer() const
+@@ -250,6 +255,7 @@ Ref<HTMLImageElement> HTMLAttachmentElement::ensureInnerImage()
+     return image;
+ }
+ 
++#if ENABLE(VIDEO)
+ Ref<HTMLVideoElement> HTMLAttachmentElement::ensureInnerVideo()
+ {
+     if (auto video = innerVideo())
+@@ -259,6 +265,7 @@ Ref<HTMLVideoElement> HTMLAttachmentElement::ensureInnerVideo()
+     ensureUserAgentShadowRoot().appendChild(video);
+     return video;
+ }
++#endif
+ 
+ RefPtr<HTMLImageElement> HTMLAttachmentElement::innerImage() const
+ {
+@@ -267,12 +274,14 @@ RefPtr<HTMLImageElement> HTMLAttachmentElement::innerImage() const
+     return nullptr;
+ }
+ 
++#if ENABLE(VIDEO)
+ RefPtr<HTMLVideoElement> HTMLAttachmentElement::innerVideo() const
+ {
+     if (auto root = userAgentShadowRoot())
+         return childrenOfType<HTMLVideoElement>(*root).first();
+     return nullptr;
+ }
++#endif
+ 
+ void HTMLAttachmentElement::populateShadowRootIfNecessary()
+ {
+@@ -297,12 +306,19 @@ void HTMLAttachmentElement::populateShadowRootIfNecessary()
+         }
+ 
+     } else if (MIMETypeRegistry::isSupportedMediaMIMEType(mimeType)) {
++#if ENABLE(VIDEO)
++        // [leopard-webkit-build] ensureInnerVideo()/HTMLVideoElement only exist
++        // under ENABLE(VIDEO). On VIDEO=0 isSupportedMediaMIMEType() is always
++        // false anyway, so this branch is dead, but gate the body so it compiles.
+         auto video = ensureInnerVideo();
+         if (video->attributeWithoutSynchronization(srcAttr).isEmpty()) {
+             video->setAttributeWithoutSynchronization(srcAttr, DOMURL::createObjectURL(document(), *m_file));
+             video->setAttributeWithoutSynchronization(controlsAttr, emptyString());
+             video->setInlineStyleProperty(CSSPropertyDisplay, CSSValueInline, true);
+         }
++#else
++        // Media MIME types are unsupported without ENABLE(VIDEO); nothing to render.
++#endif
+     }
+ }
+ 

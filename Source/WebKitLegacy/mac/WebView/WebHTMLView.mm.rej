@@ -1,0 +1,13 @@
+diff a/Source/WebKitLegacy/mac/WebView/WebHTMLView.mm b/Source/WebKitLegacy/mac/WebView/WebHTMLView.mm	(rejected hunks)
+@@ -73,6 +73,11 @@
+ #import "WebUIDelegatePrivate.h"
+ #import "WebViewInternal.h"
+ #import <QuartzCore/QuartzCore.h>
++// [leopard-webkit-build] Declares the 10.7+ NSWindow convertRectToScreen:/
++// convertRectFromScreen: category (sdk_stubs_605.mm provides the 10.6 bridge impl).
++// WebHTMLView calls these at 3+ sites; importing the category makes the NSRect
++// return type visible so .origin resolves (otherwise they'd be `id`).
++#import <AppKit/NSWindowScreenConversionCompat.h>
+ #import <WebCore/CSSStyleDeclaration.h>
+ #import <WebCore/CachedImage.h>
+ #import <WebCore/CachedResourceClient.h>

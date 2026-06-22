@@ -1,0 +1,17 @@
+diff a/Source/WebCore/PAL/pal/system/mac/PopupMenu.mm b/Source/WebCore/PAL/pal/system/mac/PopupMenu.mm	(rejected hunks)
+@@ -43,7 +43,15 @@ namespace PAL {
+ 
+ void popUpMenu(NSMenu *menu, NSPoint location, float width, NSView *view, int selectedItem, NSFont *font, NSControlSize controlSize, bool usesCustomAppearance)
+ {
++#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+     NSRect adjustedPopupBounds = [view.window convertRectToScreen:[view convertRect:view.bounds toView:nil]];
++#else
++    // convertRectToScreen: is 10.10+. On 10.6 the classic convertBaseToScreen:
++    // is point-based, so convert the bounds origin and carry the size over.
++    NSRect boundsInWindow = [view convertRect:view.bounds toView:nil];
++    NSRect adjustedPopupBounds = NSMakeRect([view.window convertBaseToScreen:boundsInWindow.origin].x,
++        [view.window convertBaseToScreen:boundsInWindow.origin].y, boundsInWindow.size.width, boundsInWindow.size.height);
++#endif
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+     if (controlSize != NSMiniControlSize) {

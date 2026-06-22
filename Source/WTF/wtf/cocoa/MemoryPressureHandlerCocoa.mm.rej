@@ -1,0 +1,60 @@
+diff a/Source/WTF/wtf/cocoa/MemoryPressureHandlerCocoa.mm b/Source/WTF/wtf/cocoa/MemoryPressureHandlerCocoa.mm	(rejected hunks)
+@@ -32,6 +32,18 @@
+ #import <notify.h>
+ #import <wtf/CurrentTime.h>
+ 
++// dispatch memory-pressure symbols are 10.7+ libdispatch additions, absent
++// from the 10.6 SDK. Define the pressure-level bitmask values (used only as
++// plain integers passed to cache_simulate_memory_warning_event) so this file
++// compiles on 10.6. The actual memory-pressure dispatch *source*
++// (DISPATCH_SOURCE_TYPE_MEMORYPRESSURE — a pointer to a struct that doesn't
++// exist on 10.6's libdispatch) is gated out in install() below.
++#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
++#define DISPATCH_MEMORYPRESSURE_NORMAL   0x1
++#define DISPATCH_MEMORYPRESSURE_WARN     0x2
++#define DISPATCH_MEMORYPRESSURE_CRITICAL 0x4
++#endif
++
+ #define ENABLE_FMW_FOOTPRINT_COMPARISON 0
+ 
+ extern "C" void cache_simulate_memory_warning_event(uint64_t);
+@@ -67,6 +79,11 @@ void MemoryPressureHandler::install()
+     if (m_installed || _timer_event_source)
+         return;
+ 
++#if !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070)
++    // DISPATCH_SOURCE_TYPE_MEMORYPRESSURE is a 10.7+ libdispatch source type
++    // with no equivalent on 10.6; skip wiring up the memory-pressure source
++    // there (it only drives proactive memory release, not correctness).
++    // _cache_event_source stays 0, which uninstall() already tolerates.
+     dispatch_async(dispatch_get_main_queue(), ^{
+ #if PLATFORM(IOS)
+         _cache_event_source = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYPRESSURE, 0, DISPATCH_MEMORYPRESSURE_NORMAL | DISPATCH_MEMORYPRESSURE_WARN | DISPATCH_MEMORYPRESSURE_CRITICAL, dispatch_get_main_queue());
+@@ -96,6 +113,7 @@ void MemoryPressureHandler::install()
+         });
+         dispatch_resume(_cache_event_source);
+     });
++#endif
+ 
+     // Allow simulation of memory pressure with "notifyutil -p org.WebKit.lowMemory"
+     notify_register_dispatch("org.WebKit.lowMemory", &_notifyTokens[0], dispatch_get_main_queue(), ^(int) {
+@@ -189,6 +211,7 @@ void MemoryPressureHandler::respondToMemoryPressure(Critical critical, Synchrono
+ 
+ std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
+ {
++#if !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1090)
+     task_vm_info_data_t vmInfo;
+     mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+     kern_return_t err = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &vmInfo, &count);
+@@ -196,6 +219,11 @@ std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHa
+         return std::nullopt;
+ 
+     return MemoryUsage {static_cast<size_t>(vmInfo.internal), static_cast<size_t>(vmInfo.phys_footprint)};
++#else
++    // task_vm_info / TASK_VM_INFO / phys_footprint are 10.9+ Mach additions,
++    // unavailable on 10.6; report an unknown usage.
++    return std::nullopt;
++#endif
+ }
+ 
+ } // namespace WTF

@@ -1,0 +1,17 @@
+diff a/Source/JavaScriptCore/jit/ExecutableAllocator.cpp b/Source/JavaScriptCore/jit/ExecutableAllocator.cpp	(rejected hunks)
+@@ -225,7 +225,15 @@ private:
+         RELEASE_ASSERT(!result);
+ 
+         // Zero out writableAddr to avoid leaking the address of the writable mapping.
++#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+         memset_s(&writableAddr, sizeof(writableAddr), 0, sizeof(writableAddr));
++#else
++        // memset_s() is Annex K, only available on macOS 10.13+. On older targets
++        // (e.g. 10.6) zero through a volatile pointer so the compiler can't elide
++        // the store as a dead write — which is the whole reason memset_s() is used here.
++        volatile mach_vm_address_t* zeroedAddr = &writableAddr;
++        *zeroedAddr = 0;
++#endif
+ 
+         jitWriteSeparateHeapsFunction = reinterpret_cast<JITWriteSeparateHeapsFunction>(writeThunk.code().executableAddress());
+     }

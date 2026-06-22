@@ -32,6 +32,6 @@
 #endif
 
 @interface NSLocale ()
-+ (nonnull NSArray<NSString *> *)minimizedLanguagesFromLanguages:(nonnull NSArray<NSString *> *)languages;
++ (nonnull NSArray *)minimizedLanguagesFromLanguages:(nonnull NSArray *)languages;  // [leopard] stripped lightweight generics (10.6 NSArray non-parameterized)
 @end
 

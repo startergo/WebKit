@@ -1,0 +1,40 @@
+diff a/Source/WebCore/PAL/pal/spi/cf/CFNetworkSPI.h b/Source/WebCore/PAL/pal/spi/cf/CFNetworkSPI.h	(rejected hunks)
+@@ -131,6 +131,12 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
+ - (NSDate *)_lastModifiedDate;
+ @end
+ 
++// [leopard-webkit-build] NSURLSession is 10.9+. The SPI categories below on
++// NSURLSessionTask / NSURLSessionConfiguration reference classes absent from the
++// 10.6 SDK; gate the whole NSURLSession SPI block under MIN_REQUIRED >= 1090 so it
++// compiles out on 10.6 (the NSURLSession networking path is never taken there —
++// ResourceHandleMac uses NSURLConnection/CFNetwork).
++#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000)
+ @interface NSURLSessionTask (TimingData)
+ - (NSDictionary *)_timingData;
+ @end
+@@ -141,12 +147,17 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
+ @end
+ #endif
+ 
++#endif // [leopard-webkit-build] NSURLSession SPI ≥10.9 gate (TimingData + ResourceHints)
++
+ @interface NSHTTPCookie ()
+ - (CFHTTPCookieRef)_CFHTTPCookie;
+ + (CFArrayRef __nullable)_ns2cfCookies:(NSArray * __nullable)nsCookies CF_RETURNS_RETAINED;
+ - (CFHTTPCookieRef __nullable)_GetInternalCFHTTPCookie;
+ @end
+ 
++// [leopard-webkit-build] NSURLSessionConfiguration is 10.9+; gate this SPI category
++// out on 10.6 (absent from the SDK). See the ≥10.9 gate above for context.
++#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000)
+ @interface NSURLSessionConfiguration ()
+ @property (assign) _TimingDataOptions _timingDataOptions;
+ @property (copy) NSData *_sourceApplicationAuditTokenData;
+@@ -160,6 +171,7 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
+ @property (nullable, copy) NSSet *_suppressedAutoAddedHTTPHeaders;
+ #endif
+ @end
++#endif // [leopard-webkit-build] NSURLSessionConfiguration SPI ≥10.9 gate
+ 
+ #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+ @interface NSURLSessionTaskTransactionMetrics ()

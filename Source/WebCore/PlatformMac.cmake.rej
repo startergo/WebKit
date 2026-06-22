@@ -1,0 +1,45 @@
+diff a/Source/WebCore/PlatformMac.cmake b/Source/WebCore/PlatformMac.cmake	(rejected hunks)
+@@ -39,7 +39,6 @@ list(APPEND WebCore_LIBRARIES
+     ${DISKARBITRATION_LIBRARY}
+     ${IOKIT_LIBRARY}
+     ${IOSURFACE_LIBRARY}
+-    ${METAL_LIBRARY}
+     ${OPENGL_LIBRARY}
+     ${QUARTZ_LIBRARY}
+     ${QUARTZCORE_LIBRARY}
+@@ -307,27 +306,6 @@ list(APPEND WebCore_SOURCES
+     platform/graphics/cg/TransformationMatrixCG.cpp
+     platform/graphics/cg/UTIRegistry.cpp
+ 
+-    platform/graphics/cocoa/GPUBufferMetal.mm
+-    platform/graphics/cocoa/GPUCommandBufferMetal.mm
+-    platform/graphics/cocoa/GPUCommandQueueMetal.mm
+-    platform/graphics/cocoa/GPUComputeCommandEncoderMetal.mm
+-    platform/graphics/cocoa/GPUComputePipelineStateMetal.mm
+-    platform/graphics/cocoa/GPUDepthStencilDescriptorMetal.mm
+-    platform/graphics/cocoa/GPUDepthStencilStateMetal.mm
+-    platform/graphics/cocoa/GPUDeviceMetal.mm
+-    platform/graphics/cocoa/GPUDrawableMetal.mm
+-    platform/graphics/cocoa/GPUFunctionMetal.mm
+-    platform/graphics/cocoa/GPULibraryMetal.mm
+-    platform/graphics/cocoa/GPURenderCommandEncoderMetal.mm
+-    platform/graphics/cocoa/GPURenderPassAttachmentDescriptorMetal.mm
+-    platform/graphics/cocoa/GPURenderPassColorAttachmentDescriptorMetal.mm
+-    platform/graphics/cocoa/GPURenderPassDepthAttachmentDescriptorMetal.mm
+-    platform/graphics/cocoa/GPURenderPassDescriptorMetal.mm
+-    platform/graphics/cocoa/GPURenderPipelineColorAttachmentDescriptorMetal.mm
+-    platform/graphics/cocoa/GPURenderPipelineDescriptorMetal.mm
+-    platform/graphics/cocoa/GPURenderPipelineStateMetal.mm
+-    platform/graphics/cocoa/GPUTextureDescriptorMetal.mm
+-    platform/graphics/cocoa/GPUTextureMetal.mm
+     platform/graphics/cocoa/GraphicsContext3DCocoa.mm
+     platform/graphics/cocoa/GraphicsContextCocoa.mm
+     platform/graphics/cocoa/FontCacheCoreText.cpp
+@@ -342,7 +320,6 @@ list(APPEND WebCore_SOURCES
+     platform/graphics/cocoa/WebCoreCALayerExtras.mm
+     platform/graphics/cocoa/WebCoreDecompressionSession.mm
+     platform/graphics/cocoa/WebGLLayer.mm
+-    platform/graphics/cocoa/WebGPULayer.mm
+ 
+     platform/graphics/cv/PixelBufferConformerCV.cpp
+     platform/graphics/cv/TextureCacheCV.mm

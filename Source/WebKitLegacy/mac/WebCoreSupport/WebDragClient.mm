@@ -140,6 +140,10 @@ void WebDragClient::startDrag(DragItem dragItem, DataTransfer& dataTransfer, Fra
 
 void WebDragClient::beginDrag(DragItem dragItem, Frame& frame, const IntPoint& mouseDownPosition, const IntPoint& mouseDraggedPosition, DataTransfer& dataTransfer, DragSourceAction dragSourceAction)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+    // [leopard-webkit-build] NSDraggingItem + NSDraggingSession (beginDraggingSessionWithItems:)
+    // are 10.7+. On 10.6 the modern drag path is unavailable; WebCore falls back to the
+    // legacy startDrag path (dragImage:at:offset:event:pasteboard:source:slideBack:).
     ASSERT(!dataTransfer.pasteboard().hasData());
 
     RetainPtr<WebHTMLView> topWebHTMLView = dynamic_objc_cast<WebHTMLView>(m_webView.mainFrame.frameView.documentView);
@@ -160,6 +164,10 @@ void WebDragClient::beginDrag(DragItem dragItem, Frame& frame, const IntPoint& m
     // FIXME: We should be able to make a fake event with the mosue dragged coordinates.
     NSEvent *event = frame.eventHandler().currentNSEvent();
     [topWebHTMLView.get() beginDraggingSessionWithItems:@[ draggingItem.get() ] event:event source:topWebHTMLView.get()];
+#else
+    UNUSED_PARAM(dragItem); UNUSED_PARAM(frame); UNUSED_PARAM(mouseDownPosition);
+    UNUSED_PARAM(mouseDraggedPosition); UNUSED_PARAM(dataTransfer); UNUSED_PARAM(dragSourceAction);
+#endif
 }
 
 void WebDragClient::declareAndWriteDragImage(const String& pasteboardName, Element& element, const URL& url, const String& title, WebCore::Frame* frame)

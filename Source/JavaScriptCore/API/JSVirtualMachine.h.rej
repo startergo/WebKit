@@ -1,0 +1,9 @@
+diff a/Source/JavaScriptCore/API/JSVirtualMachine.h b/Source/JavaScriptCore/API/JSVirtualMachine.h	(rejected hunks)
+@@ -34,6 +34,7 @@
+  virtual machine, with concurrent JavaScript execution supported by allocating
+  separate instances of JSVirtualMachine.
+ */
++__attribute__((visibility("default")))
+ NS_CLASS_AVAILABLE(10_9, 7_0)
+ @interface JSVirtualMachine : NSObject
+ 
