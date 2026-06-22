@@ -27,6 +27,7 @@
  */
 
 #import "config.h"
+#include <sys/param.h>
 #import <wtf/FileSystem.h>
 
 #import <wtf/SoftLinking.h>

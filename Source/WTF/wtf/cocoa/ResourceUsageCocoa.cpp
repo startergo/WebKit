@@ -24,6 +24,7 @@
  */
 
 #include "config.h"
+#include <unistd.h>
 #include <wtf/ResourceUsage.h>
 
 #include <mach/mach_error.h>

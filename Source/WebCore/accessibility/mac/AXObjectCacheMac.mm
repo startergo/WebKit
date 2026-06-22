@@ -282,7 +282,12 @@ static void AXPostNotificationWithUserInfo(AccessibilityObjectWrapper *object, N
     if (skipSystemNotification)
         return;
 
+#if defined(LEOPARD_WEBKIT)
+    UNUSED_PARAM(userInfo); /* [leopard] WithUserInfo variant is 10.7+; 10.6 has no userInfo */
+    NSAccessibilityPostNotification(object, notification);
+#else
     NSAccessibilityPostNotificationWithUserInfo(object, notification, userInfo);
+#endif
 }
 
 void AXObjectCache::postPlatformNotification(AXCoreObject* obj, AXNotification notification)

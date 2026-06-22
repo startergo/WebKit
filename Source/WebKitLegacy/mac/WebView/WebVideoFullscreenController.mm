@@ -25,7 +25,7 @@
 
 #import "WebVideoFullscreenController.h"
 
-#if ENABLE(VIDEO) && PLATFORM(MAC)
+#if ENABLE(VIDEO) && PLATFORM(MAC) && !defined(LEOPARD_WEBKIT)
 
 #import <AVFoundation/AVPlayer.h>
 #import <WebCore/HTMLVideoElement.h>
@@ -345,5 +345,39 @@ static WebAVPlayerView *allocWebAVPlayerViewInstance()
 @end
 
 ALLOW_DEPRECATED_DECLARATIONS_END
+
+// [leopard] WebVideoFullscreenController is built on AVKit (PlaybackSessionInterfaceAVKit,
+// WebAVPlayerController, AVPlayerView) which is 10.9+. On 10.6 provide a minimal no-op
+// stub so WebView.mm can instantiate it; WK1 video fullscreen is unsupported on 10.6.
+#if ENABLE(VIDEO) && PLATFORM(MAC) && defined(LEOPARD_WEBKIT)
+
+#import <WebCore/HTMLVideoElement.h>
+
+@implementation WebVideoFullscreenController {
+    NakedPtr<WebCore::HTMLVideoElement> _stubVideoElement;
+}
+
+- (void)setVideoElement:(NakedPtr<WebCore::HTMLVideoElement>)videoElement
+{
+    _stubVideoElement = videoElement;
+}
+
+- (NakedPtr<WebCore::HTMLVideoElement>)videoElement
+{
+    return _stubVideoElement;
+}
+
+- (void)enterFullscreen:(NSScreen *)screen
+{
+    UNUSED_PARAM(screen);
+}
+
+- (void)exitFullscreen
+{
+}
+
+@end
+
+#endif
 
 #endif

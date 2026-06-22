@@ -68,7 +68,9 @@ void FileSystem::setMetadataURL(const String& path, const String& metadataURLStr
             [whereFromAttribute addObject:referrer];
 
         MDItemSetAttribute(item.get(), kMDItemWhereFroms, (__bridge CFArrayRef)whereFromAttribute.get());
+#if !defined(LEOPARD_WEBKIT)  /* kMDItemDownloadedDate is 10.7+ */
         MDItemSetAttribute(item.get(), kMDItemDownloadedDate, (__bridge CFArrayRef)@[ [NSDate date] ]);
+#endif
     });
 }
 

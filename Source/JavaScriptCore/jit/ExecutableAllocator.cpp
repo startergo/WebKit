@@ -284,7 +284,11 @@ static ALWAYS_INLINE void initializeSeparatedWXHeaps(void* stubBase, size_t stub
     RELEASE_ASSERT(!result);
 
     // Zero out writableAddr to avoid leaking the address of the writable mapping.
+#if defined(LEOPARD_WEBKIT)
+    memset(&writableAddr, 0, sizeof(writableAddr));
+#else
     memset_s(&writableAddr, sizeof(writableAddr), 0, sizeof(writableAddr));
+#endif
 
 #if ENABLE(SEPARATED_WX_HEAP)
     g_jscConfig.jitWriteSeparateHeaps = reinterpret_cast<JITWriteSeparateHeapsFunction>(writeThunk.code().executableAddress());

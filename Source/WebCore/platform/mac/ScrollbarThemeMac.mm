@@ -564,7 +564,12 @@ void ScrollbarThemeMac::paintScrollCorner(GraphicsContext& context, const IntRec
 
     auto cornerDrawingOptions = @{ (__bridge NSString *)kCUIWidgetKey: (__bridge NSString *)kCUIWidgetScrollBarTrackCorner,
         (__bridge NSString *)kCUIIsFlippedKey: (__bridge NSNumber *)kCFBooleanTrue };
+#if defined(LEOPARD_WEBKIT)
+    /* [leopard] NSAppearance _drawInRect: is 10.9+; skip on 10.6 (legacy scrollbars). */
+    (void)cornerDrawingOptions;
+#else
     [[NSAppearance currentAppearance] _drawInRect:cornerRect context:localContext.cgContext() options:cornerDrawingOptions];
+#endif
 }
 
 #if ENABLE(RUBBER_BANDING)

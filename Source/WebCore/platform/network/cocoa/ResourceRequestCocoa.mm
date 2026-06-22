@@ -24,6 +24,7 @@
  */
 
 #import "config.h"
+#import <wtf/cocoa/VectorCocoa.h>
 #import "ResourceRequest.h"
 
 #if PLATFORM(COCOA)

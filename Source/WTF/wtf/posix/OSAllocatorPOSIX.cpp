@@ -69,7 +69,7 @@ void* OSAllocator::reserveAndCommit(size_t bytes, Usage usage, bool writable, bo
         protection |= PROT_EXEC;
 
     int flags = MAP_PRIVATE | MAP_ANON;
-#if OS(DARWIN)
+#if OS(DARWIN) && !defined(LEOPARD_WEBKIT)  /* MAP_JIT is 10.7+; on 10.6 PROT_EXEC suffices */
     if (executable)
         flags |= MAP_JIT;
 #endif
