@@ -1611,7 +1611,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
     _private->page->settings().setContentDispositionAttachmentSandboxEnabled(true);
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !defined(LEOPARD_WEBKIT)
     [WebViewVisualIdentificationOverlay installForWebViewIfNeeded:self kind:@"WebView" deprecated:YES];
 #endif
 }
@@ -10236,7 +10236,12 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const WebCore::RenderStyle
 
 - (void)_installVisualIdentificationOverlayForViewIfNeeded:(id)view kind:(NSString *)kind
 {
+#if !defined(LEOPARD_WEBKIT)
     [WebViewVisualIdentificationOverlay installForWebViewIfNeeded:static_cast<UIView *>(view) kind:kind deprecated:YES];
+#else
+    UNUSED_PARAM(view);
+    UNUSED_PARAM(kind);
+#endif
 }
 
 @end
