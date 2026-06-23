@@ -226,6 +226,7 @@ void MemoryPressureHandler::respondToMemoryPressure(Critical critical, Synchrono
 
 Optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
 {
+#if !(defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1090)
     task_vm_info_data_t vmInfo;
     mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
     kern_return_t err = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &vmInfo, &count);
@@ -233,6 +234,10 @@ Optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler
         return WTF::nullopt;
 
     return MemoryUsage {static_cast<size_t>(vmInfo.internal), static_cast<size_t>(vmInfo.phys_footprint)};
+#else
+    // [leopard] task_vm_info (internal/phys_footprint) is 10.9+; unavailable on 10.6.
+    return WTF::nullopt;
+#endif
 }
 
 } // namespace WTF

@@ -75,7 +75,9 @@ const char* displayNameForVMTag(unsigned tag)
     switch (tag) {
     case VM_MEMORY_IOKIT: return "IOKit";
     case VM_MEMORY_LAYERKIT: return "CoreAnimation";
+#ifdef VM_MEMORY_IMAGEIO
     case VM_MEMORY_IMAGEIO: return "ImageIO";
+#endif
     case VM_MEMORY_CGIMAGE: return "CG image";
     case VM_MEMORY_JAVASCRIPT_CORE: return "Gigacage";
     case VM_MEMORY_JAVASCRIPT_JIT_EXECUTABLE_ALLOCATOR: return "JSC JIT";
@@ -85,16 +87,26 @@ const char* displayNameForVMTag(unsigned tag)
     case VM_MEMORY_MALLOC_LARGE: return "malloc (large)";
     case VM_MEMORY_MALLOC_SMALL: return "malloc (small)";
     case VM_MEMORY_MALLOC_TINY: return "malloc (tiny)";
+#ifdef VM_MEMORY_MALLOC_NANO
     case VM_MEMORY_MALLOC_NANO: return "malloc (nano)";
+#endif
     case VM_MEMORY_TCMALLOC: return "bmalloc";
     case VM_MEMORY_FOUNDATION: return "Foundation";
     case VM_MEMORY_STACK: return "Stack";
     case VM_MEMORY_SQLITE: return "SQLite";
+#ifdef VM_MEMORY_UNSHARED_PMAP
     case VM_MEMORY_UNSHARED_PMAP: return "pmap (unshared)";
+#endif
     case VM_MEMORY_DYLIB: return "dylib";
+#ifdef VM_MEMORY_CORESERVICES
     case VM_MEMORY_CORESERVICES: return "CoreServices";
+#endif
+#ifdef VM_MEMORY_OS_ALLOC_ONCE
     case VM_MEMORY_OS_ALLOC_ONCE: return "os_alloc_once";
+#endif
+#ifdef VM_MEMORY_LIBDISPATCH
     case VM_MEMORY_LIBDISPATCH: return "libdispatch";
+#endif
     default: return nullptr;
     }
 }

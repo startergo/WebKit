@@ -234,12 +234,23 @@ static void updateStates(NSCell* cell, const ControlStates& controlStates, bool 
     bool oldChecked = [cell state] == NSControlStateValueOn;
     if (oldIndeterminate != indeterminate || checked != oldChecked) {
         NSControlStateValue newState = indeterminate ? NSControlStateValueMixed : (checked ? NSControlStateValueOn : NSControlStateValueOff);
-        [(NSButtonCell*)cell _setState:newState animated:useAnimation];
+        // [leopard] -[NSButtonCell _setState:animated:] is 10.7+ (unrecognized on 10.6,
+        // crashes during form-control theme painting). Fall back to public -setState:
+        // (10.0+); 10.6 has no control-state animation anyway.
+        if ([(NSButtonCell*)cell respondsToSelector:@selector(_setState:animated:)])
+            [(NSButtonCell*)cell _setState:newState animated:useAnimation];
+        else
+            [(NSButtonCell*)cell setState:newState];
     }
 
     // Presenting state
     if (states & ControlStates::PresentingState)
-        [(NSButtonCell*)cell _setHighlighted:YES animated:NO];
+        // [leopard] -[NSButtonCell _setHighlighted:animated:] is 10.7+; fall back to
+        // public -setHighlighted: (10.0+) on 10.6.
+        if ([(NSButtonCell*)cell respondsToSelector:@selector(_setHighlighted:animated:)])
+            [(NSButtonCell*)cell _setHighlighted:YES animated:NO];
+        else
+            [(NSButtonCell*)cell setHighlighted:YES];
 
     // Window inactive state does not need to be checked explicitly, since we paint parented to 
     // a view in a window whose key state can be detected.
