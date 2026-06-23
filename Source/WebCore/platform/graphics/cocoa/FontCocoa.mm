@@ -308,6 +308,12 @@ static RetainPtr<CFDictionaryRef> smallCapsTrueTypeDictionary(int rawKey, int ra
 
 static void unionBitVectors(BitVector& result, CFBitVectorRef source)
 {
+    // [leopard] On 10.6 the OpenType coverage query (CTFontCopyDefaultCascadeList /
+    // feature-coverage SPI) can return a null CFBitVector where modern CoreText returns an empty
+    // one. CFBitVectorGetCount(null) dereferences null (SIGSEGV at 0x10 during small-caps synthesis
+    // in complex text layout). Treat null as no coverage.
+    if (!source)
+        return;
     CFIndex length = CFBitVectorGetCount(source);
     result.ensureSize(length);
     CFIndex min = 0;

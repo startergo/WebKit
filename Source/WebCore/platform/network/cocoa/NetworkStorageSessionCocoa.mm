@@ -473,9 +473,13 @@ void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameS
     NSURL *cookieURL = url;
     NSDictionary *headerFields = @{ @"Set-Cookie": cookieString };
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !defined(LEOPARD_WEBKIT)
     NSArray *unfilteredCookies = [NSHTTPCookie _parsedCookiesWithResponseHeaderFields:headerFields forURL:cookieURL];
 #else
+    // [leopard] +[NSHTTPCookie _parsedCookiesWithResponseHeaderFields:forURL:] is a modern private
+    // SPI absent on 10.6 (unrecognized selector when JS sets document.cookie). Use the public
+    // +cookiesWithResponseHeaderFields:forURL: (10.2+); the cookieString already appends '=' above
+    // so valueless cookies still parse.
     NSArray *unfilteredCookies = [NSHTTPCookie cookiesWithResponseHeaderFields:headerFields forURL:cookieURL];
 #endif
 
