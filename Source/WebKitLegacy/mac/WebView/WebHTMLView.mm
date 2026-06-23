@@ -5051,7 +5051,14 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     auto* coreFrame = core([self _frame]);
     auto string = adoptNS([[NSAttributedString alloc] initWithString:@"x"
+#if defined(LEOPARD_WEBKIT)
+        // [leopard] FontAttributes::createDictionary() lives in FontAttributesCocoa.mm, excluded on
+        // 10.6 (uses 10.13+ NSTextListMarker* constants). RTF-with-font-attributes degrades to plain
+        // attributes; pass nil so we do not reference the absent WebCore symbol.
+        attributes:nil]);
+#else
         attributes:coreFrame ? coreFrame->editor().fontAttributesAtSelectionStart().createDictionary().get() : nil]);
+#endif
     return [string RTFFromRange:NSMakeRange(0, [string length]) documentAttributes:@{ }];
 }
 
@@ -5713,7 +5720,12 @@ static BOOL writingDirectionKeyBindingsEnabled()
     if (auto* coreFrame = core([self _frame])) {
         if (const WebCore::Font* fd = coreFrame->editor().fontForSelection(multipleFonts))
             font = (NSFont *)fd->platformData().registeredFont();
+#if defined(LEOPARD_WEBKIT)
+        // [leopard] createDictionary() unavailable on 10.6 (see above); leave attributes empty.
+        attributes = nil;
+#else
         attributes = coreFrame->editor().fontAttributesAtSelectionStart().createDictionary();
+#endif
     }
 
     // FIXME: for now, return a bogus font that distinguishes the empty selection from the non-empty

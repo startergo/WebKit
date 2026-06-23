@@ -254,7 +254,7 @@ private:
 
     RetainPtr<WebFrame> m_webFrame;
 
-    WeakObjCPtr<WebFramePolicyListener> m_policyListener;
+    RetainPtr<WebFramePolicyListener> m_policyListener; // [leopard] strong (was WeakObjCPtr); 10.6 lacks zeroing-weak runtime, matches 605
 };
 
 WebDataSource *dataSource(WebCore::DocumentLoader*);

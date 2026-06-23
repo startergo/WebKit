@@ -391,6 +391,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/RemoteCommandListenerMac.mm
     platform/mac/SSLKeyGeneratorMac.mm
     platform/mac/ScrollAnimatorMac.mm
+    platform/mac/WebCoreView.m  # [leopard] base NSView/NSScrollView _webcore_effectiveFirstResponder categories (was missing -> focus crash)
     platform/mac/ScrollViewMac.mm
     platform/mac/ScrollbarThemeMac.mm
     platform/mac/SerializedPlatformDataCueMac.mm

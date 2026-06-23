@@ -40,6 +40,12 @@
 #import <pal/cocoa/MediaToolboxSoftLink.h>
 #endif
 
+// [leopard] Declare the 10.8+ NSWorkspace accessibility selector so calls typecheck as BOOL
+// on the 10.6 SDK (where it is absent). Guarded at call sites with respondsToSelector:.
+@interface NSWorkspace (SLInvertedColorsCompat)
+- (BOOL)accessibilityDisplayShouldInvertColors;
+@end
+
 namespace WebCore {
 
 // These functions scale between screen and page coordinates because JavaScript/DOM operations
@@ -100,7 +106,11 @@ ScreenProperties collectScreenProperties()
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
 
     ScreenProperties screenProperties;
-    bool screenHasInvertedColors = [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldInvertColors];
+    // [leopard] -[NSWorkspace accessibilityDisplayShouldInvertColors] is 10.8+. On 10.6 the
+    // selector is absent; respondsToSelector: guard yields false (no inverted-colors setting).
+    bool screenHasInvertedColors = false;
+    if ([[NSWorkspace sharedWorkspace] respondsToSelector:@selector(accessibilityDisplayShouldInvertColors)])
+        screenHasInvertedColors = [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldInvertColors];
 
     for (NSScreen *screen in [NSScreen screens]) {
         auto displayID = WebCore::displayID(screen);
@@ -246,6 +256,9 @@ bool screenHasInvertedColors()
 
     // This is a system-wide accessibility setting, same on all screens.
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
+    // [leopard] 10.8+ selector; guard for 10.6 (returns false).
+    if (![[NSWorkspace sharedWorkspace] respondsToSelector:@selector(accessibilityDisplayShouldInvertColors)])
+        return false;
     return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldInvertColors];
 }
 

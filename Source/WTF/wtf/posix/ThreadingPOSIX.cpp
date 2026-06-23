@@ -477,6 +477,15 @@ void Thread::destructTLS(void* data)
 #endif
 }
 
+#if defined(LEOPARD_WEBKIT)
+__attribute__((used, visibility("default")))
+Mutex::Mutex()
+{
+    /* [leopard] m_mutex is already initialized by its in-class PTHREAD_MUTEX_INITIALIZER;
+       this out-of-line ctor exists only to export __ZN3WTF5MutexC1Ev for Safari 5.0.5. */
+}
+#endif
+
 Mutex::~Mutex()
 {
     int result = pthread_mutex_destroy(&m_mutex);
@@ -507,6 +516,15 @@ void Mutex::unlock()
     int result = pthread_mutex_unlock(&m_mutex);
     ASSERT_UNUSED(result, !result);
 }
+
+#if defined(LEOPARD_WEBKIT)
+__attribute__((used, visibility("default")))
+ThreadCondition::ThreadCondition()
+{
+    /* [leopard] m_condition is already initialized by its in-class PTHREAD_COND_INITIALIZER;
+       this out-of-line ctor exists only to export the symbol for Safari 5.0.5. */
+}
+#endif
 
 ThreadCondition::~ThreadCondition()
 {
@@ -540,6 +558,13 @@ bool ThreadCondition::timedWait(Mutex& mutex, WallTime absoluteTime)
 
     return pthread_cond_timedwait(&m_condition, &mutex.impl(), &targetTime) == 0;
 }
+
+#if defined(LEOPARD_WEBKIT)
+bool ThreadCondition::timedWait(Mutex& mutex, double absoluteTime)
+{
+    return timedWait(mutex, WallTime::fromRawSeconds(absoluteTime));
+}
+#endif
 
 void ThreadCondition::signal()
 {

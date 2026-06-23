@@ -242,8 +242,10 @@ static void buildMediaEnginesVector()
 #if PLATFORM(COCOA)
         if (registerRemoteEngine)
             registerRemoteEngine(addMediaEngine, MediaPlayerEnums::MediaEngineIdentifier::AVFoundation);
+#if !defined(LEOPARD_WEBKIT)
         else
             MediaPlayerPrivateAVFoundationObjC::registerMediaEngine(addMediaEngine);
+#endif
 #endif
 
 #if ENABLE(MEDIA_SOURCE)

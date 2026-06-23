@@ -1535,7 +1535,7 @@ RetainPtr<WebFramePolicyListener> WebFrameLoaderClient::setUpPolicyListener(WebC
 #endif
         policyListener = adoptNS([[WebFramePolicyListener alloc] initWithFrame:core(m_webFrame.get()) identifier:identifier policyFunction:WTFMove(function) defaultPolicy:defaultPolicy]);
 
-    m_policyListener = policyListener.get();
+    m_policyListener = policyListener;
 
     return policyListener;
 }

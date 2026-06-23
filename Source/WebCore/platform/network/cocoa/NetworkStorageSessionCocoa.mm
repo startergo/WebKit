@@ -251,6 +251,16 @@ static NSArray *cookiesForURL(NSHTTPCookieStorage *storage, NSURL *url, NSURL *m
     auto completionHandler = [&cookiesPtr] (NSArray *cookies) {
         cookiesPtr = retainPtr(cookies);
     };
+    // [leopard] The _getCookiesForURL:...:completionHandler: SPIs are 10.9+ (cookie partitioning/ITP)
+    // and do not exist on 10.6 (unrecognized selector). Fall back to the basic public
+    // -[NSHTTPCookieStorage cookiesForURL:] (10.2+), matching the 605 reference. Partition and
+    // SameSite are not enforceable on 10.6's cookie store.
+    if (![storage respondsToSelector:@selector(_getCookiesForURL:mainDocumentURL:partition:completionHandler:)]) {
+        UNUSED_PARAM(mainDocumentURL);
+        UNUSED_PARAM(sameSiteInfo);
+        UNUSED_PARAM(partition);
+        return [storage cookiesForURL:url];
+    }
 // FIXME: Seems like this newer code path can be used for watchOS and tvOS too.
 #if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
     if ([storage respondsToSelector:@selector(_getCookiesForURL:mainDocumentURL:partition:policyProperties:completionHandler:)])
@@ -306,7 +316,15 @@ NSArray *NetworkStorageSession::httpCookiesForURL(CFHTTPCookieStorageRef cookieS
 
     // FIXME: Stop creating a new NSHTTPCookieStorage object each time we want to query the cookie jar.
     // NetworkStorageSession could instead keep a NSHTTPCookieStorage object for us.
-    RetainPtr<NSHTTPCookieStorage> nsCookieStorage = adoptNS([[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:cookieStorage]);
+    // [leopard] -[NSHTTPCookieStorage _initWithCFHTTPCookieStorage:] is a modern private SPI absent
+    // on 10.6 (unrecognized selector). When the CF storage is the process default (always true here,
+    // since a null storage is replaced with _CFHTTPCookieStorageGetDefault above), the shared
+    // NSHTTPCookieStorage wraps the same jar -- use it directly, matching nsCookieStorage().
+    RetainPtr<NSHTTPCookieStorage> nsCookieStorage;
+    if (cookieStorage == _CFHTTPCookieStorageGetDefault(kCFAllocatorDefault))
+        nsCookieStorage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+    else
+        nsCookieStorage = adoptNS([[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:cookieStorage]);
     return WebCore::cookiesForURL(nsCookieStorage.get(), url, firstParty, sameSiteInfo);
 }
 

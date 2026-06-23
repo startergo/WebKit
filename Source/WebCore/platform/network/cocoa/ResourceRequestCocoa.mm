@@ -191,7 +191,12 @@ void ResourceRequest::doUpdatePlatformRequest()
     [nsRequest _setProperty:m_isTopSite ? @YES : @NO forKey:@"_kCFHTTPCookiePolicyPropertyIsTopLevelNavigation"];
 
     // Cannot just use setAllHTTPHeaderFields here, because it does not remove headers.
-    for (NSString *oldHeaderName in [nsRequest allHTTPHeaderFields])
+    // [leopard] On 10.6, -[NSMutableURLRequest allHTTPHeaderFields] returns the internal
+    // mutable dictionary, so mutating it via setValue:nil:forHTTPHeaderField: inside a
+    // fast-enumeration over it throws "mutated while being enumerated" (hangs page load).
+    // Iterate over a snapshot of the keys (a separate array) to decouple enumeration
+    // from the mutation.
+    for (NSString *oldHeaderName in [[nsRequest allHTTPHeaderFields] allKeys])
         [nsRequest setValue:nil forHTTPHeaderField:oldHeaderName];
     for (const auto& header : httpHeaderFields())
         [nsRequest setValue:header.value forHTTPHeaderField:header.key];

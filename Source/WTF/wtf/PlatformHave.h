@@ -285,7 +285,9 @@
 #define HAVE_QOS_CLASSES 1
 #endif
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) && !defined(LEOPARD_WEBKIT)
+// [leopard] AVAssetReader-based image decoding (ImageDecoderAVFObjC) is excluded on 10.6;
+// disabling HAVE_AVASSETREADER removes all dangling references to the excluded decoder.
 #define HAVE_AVASSETREADER 1
 #endif
 
