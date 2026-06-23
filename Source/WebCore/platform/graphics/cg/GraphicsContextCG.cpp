@@ -1202,8 +1202,15 @@ static void applyShadowOffsetWorkaroundIfNeeded(const GraphicsContext& context, 
     if (context.isAcceleratedContext())
         return;
 
+#if defined(LEOPARD_WEBKIT)
+    // [leopard] CGContextDrawsWithCorrectShadowOffsets is not an exported symbol in 10.6's
+    // CoreGraphics (SIGBUS at the unbound stub when painting CSS box-shadows). 10.6 predates the
+    // correct-offset behavior, so fall through and always apply the offset workaround below.
+    UNUSED_PARAM(context);
+#else
     if (CGContextDrawsWithCorrectShadowOffsets(context.platformContext()))
         return;
+#endif
 
     // Work around <rdar://problem/5539388> by ensuring that the offsets will get truncated
     // to the desired integer. Also see: <rdar://problem/10056277>

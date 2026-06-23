@@ -26,6 +26,14 @@
 #import "config.h"
 #import "ThemeMac.h"
 
+#if defined(LEOPARD_WEBKIT)
+// [leopard] The 10.6 SDK's NSWorkspace.h does not declare accessibilityDisplayShouldReduceMotion;
+// declare it so the respondsToSelector:-guarded call below typechecks (it returns BOOL).
+@interface NSWorkspace (SLReduceMotionCompat)
+- (BOOL)accessibilityDisplayShouldReduceMotion;
+@end
+#endif
+
 #if PLATFORM(MAC)
 
 #import "AXObjectCache.h"
@@ -994,7 +1002,16 @@ void ThemeMac::paint(ControlPart part, ControlStates& states, GraphicsContext& c
 
 bool ThemeMac::userPrefersReducedMotion() const
 {
+#if defined(LEOPARD_WEBKIT)
+    // [leopard] -[NSWorkspace accessibilityDisplayShouldReduceMotion] is 10.9+ (unrecognized
+    // selector on 10.6). No reduced-motion preference exists on 10.6; report false.
+    NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
+    if (![workspace respondsToSelector:@selector(accessibilityDisplayShouldReduceMotion)])
+        return false;
+    return [workspace accessibilityDisplayShouldReduceMotion];
+#else
     return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
+#endif
 }
 
 }
