@@ -817,7 +817,14 @@ public:
         m_phase = phaseForEvent(event);
         m_momentumPhase = momentumPhaseForEvent(event);
         m_hasPreciseScrollingDeltas = continuous;
-        m_directionInvertedFromDevice = [event isDirectionInvertedFromDevice];
+        // [leopard] -[NSEvent isDirectionInvertedFromDevice] is 10.7+; on 10.6 it is
+        // an unrecognized selector (doesNotRecognizeSelector abort on every scroll).
+        // Runtime-check with respondsToSelector: so this is correct regardless of
+        // SDK/deployment-target macro resolution; 10.6 has no natural-scroll concept.
+        if ([event respondsToSelector:@selector(isDirectionInvertedFromDevice)])
+            m_directionInvertedFromDevice = [event isDirectionInvertedFromDevice];
+        else
+            m_directionInvertedFromDevice = false;
     }
 };
 
