@@ -171,6 +171,17 @@ void AudioSession::removeMutedStateObserver(MutedStateObserver*)
     notImplemented();
 }
 
+void AudioSession::handleMutedStateChange()
+{
+    notImplemented();
+}
+
+bool AudioSession::isMuted() const
+{
+    notImplemented();
+    return false;
+}
+
 #endif // !PLATFORM(COCOA) || 10.6 Mac stub
 
 String convertEnumerationToString(RouteSharingPolicy enumerationValue)
