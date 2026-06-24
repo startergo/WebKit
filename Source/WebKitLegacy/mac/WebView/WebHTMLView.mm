@@ -3612,6 +3612,12 @@ static RetainPtr<NSMenuItem> createShareMenuItem(const WebCore::HitTestResult& h
     if (![items count])
         return nil;
 
+    // [leopard] +[NSMenuItem standardShareMenuItemForItems:] is 10.8+; on 10.6 it is
+    // an unrecognized selector (crashes building the context menu, e.g. when opening
+    // the Web Inspector via Inspect Element). No system Share menu on 10.6; omit it.
+    if (![NSMenuItem respondsToSelector:@selector(standardShareMenuItemForItems:)])
+        return nil;
+
     return [NSMenuItem standardShareMenuItemForItems:items.get()];
 }
 
