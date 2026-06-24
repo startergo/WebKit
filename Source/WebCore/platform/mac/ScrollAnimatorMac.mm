@@ -738,9 +738,19 @@ ScrollAnimatorMac::ScrollAnimatorMac(ScrollableArea& scrollableArea)
     m_scrollAnimationHelper = adoptNS([[NSClassFromString(@"NSScrollAnimationHelper") alloc] initWithDelegate:m_scrollAnimationHelperDelegate.get()]);
 
     m_scrollerImpPairDelegate = adoptNS([[WebScrollerImpPairDelegate alloc] initWithScrollableArea:&scrollableArea]);
-    m_scrollerImpPair = adoptNS([[NSScrollerImpPair alloc] init]);
-    [m_scrollerImpPair setDelegate:m_scrollerImpPairDelegate.get()];
-    [m_scrollerImpPair setScrollerStyle:ScrollerStyle::recommendedScrollerStyle()];
+    // [leopard] 10.6 has only legacy (always-visible) scrollbars; its private
+    // NSScrollerImpPair is an older, incompatible class that responds to some
+    // selectors (e.g. overlayScrollerStateIsLocked) but NOT others added later
+    // (e.g. mouseMovedInContentArea) -> doesNotRecognizeSelector crash on mouse
+    // move over any scrollable area. Only build the overlay-scroller machinery
+    // when the class supports the modern content-area API; otherwise leave
+    // m_scrollerImpPair nil. All [m_scrollerImpPair ...] sends below are then
+    // safe no-ops (messaging nil returns 0/nil in Objective-C).
+    if ([NSScrollerImpPair instancesRespondToSelector:@selector(mouseMovedInContentArea)]) {
+        m_scrollerImpPair = adoptNS([[NSScrollerImpPair alloc] init]);
+        [m_scrollerImpPair setDelegate:m_scrollerImpPairDelegate.get()];
+        [m_scrollerImpPair setScrollerStyle:ScrollerStyle::recommendedScrollerStyle()];
+    }
 }
 
 ScrollAnimatorMac::~ScrollAnimatorMac()
