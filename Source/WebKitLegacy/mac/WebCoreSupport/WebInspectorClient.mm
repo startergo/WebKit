@@ -221,9 +221,11 @@ void WebInspectorFrontendClient::startWindowDrag()
     [[m_frontendWindowController window] performWindowDragWithEvent:[NSApp currentEvent]];
 }
 
+static NSBundle *webInspectorUIBundle();
+
 String WebInspectorFrontendClient::localizedStringsURL() const
 {
-    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    NSBundle *bundle = webInspectorUIBundle();
     if (!bundle)
         return String();
 
@@ -534,9 +536,29 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 // MARK: -
 
+static NSBundle *webInspectorUIBundle()
+{
+    // [leopard] +[NSBundle bundleWithIdentifier:] only finds ALREADY-LOADED bundles.
+    // In the injected-framework setup the WebInspectorUI bundle is not registered, so
+    // bundleWithIdentifier: returns nil -> inspectorPagePath returns nil -> the
+    // Inspector tries [NSURL fileURLWithPath:nil] and throws (Inspector never opens).
+    // Locate the framework by path: it is a sibling of WebKitLegacy.framework in the
+    // same Frameworks/<ver> directory, so load it relative to this code's bundle.
+    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    if (bundle)
+        return bundle;
+
+    NSString *frameworksDir = [[NSBundle bundleForClass:[WebInspectorWindowController class]] bundlePath].stringByDeletingLastPathComponent;
+    NSString *uiPath = [frameworksDir stringByAppendingPathComponent:@"WebInspectorUI.framework"];
+    bundle = [NSBundle bundleWithPath:uiPath];
+    if (bundle && ![bundle isLoaded])
+        [bundle load];
+    return bundle;
+}
+
 - (NSString *)inspectorPagePath
 {
-    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    NSBundle *bundle = webInspectorUIBundle();
     if (!bundle)
         return nil;
 
@@ -545,7 +567,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 - (NSString *)inspectorTestPagePath
 {
-    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    NSBundle *bundle = webInspectorUIBundle();
     if (!bundle)
         return nil;
 
