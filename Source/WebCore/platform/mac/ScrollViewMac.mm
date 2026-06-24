@@ -222,8 +222,10 @@ void ScrollView::platformSetScrollPosition(const IntPoint& scrollPoint)
 
     // AppKit has the inset factored into all of its scroll positions. In WebCore, we use positions that ignore
     // the insets so that they are equivalent whether or not there is an inset.
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     tempPoint.x = tempPoint.x - scrollView().contentInsets.left;
     tempPoint.y = tempPoint.y - scrollView().contentInsets.top;
+#endif
 
     [documentView() scrollPoint:tempPoint];
     END_BLOCK_OBJC_EXCEPTIONS;
