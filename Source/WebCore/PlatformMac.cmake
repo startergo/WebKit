@@ -203,6 +203,7 @@ list(APPEND WebCore_SOURCES
     platform/ScrollableArea.cpp
 
     platform/audio/AudioSession.cpp
+    platform/leopard/LeopardMissingSymbols.mm
 
     # [leopard] removed: platform/audio/cocoa/WebAudioBufferList.cpp
 
