@@ -305,9 +305,13 @@
 /* This is used for debugging when hacking on how bmalloc calculates its physical footprint. */
 #define ENABLE_PHYSICAL_PAGE_MAP 0
 
-#if BPLATFORM(MAC)
+#if BPLATFORM(MAC) && !(defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) && __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 1090)
 #define BUSE_PARTIAL_SCAVENGE 1
 #else
+// [leopard] On 10.6 PARTIAL_SCAVENGE (scavengeToHighWatermark + the IsoDirectory
+// partial machinery) NULL-crashes the bmalloc scavenger thread under memory
+// pressure (SIGSEGV in partialScavenge, youtube.com). Fall back to the simpler
+// full-scavenge run-loop path, which is stable on 10.6.
 #define BUSE_PARTIAL_SCAVENGE 0
 #endif
 
