@@ -9,8 +9,10 @@
 
 #include "CertificateInfo.h"
 #include "DictionaryLookup.h"
+#include "HitTestResult.h"
 #include "MediaSessionManagerCocoa.h"
 #include "NotImplemented.h"
+#include "Range.h"
 #include "ResourceUsageThread.h"
 
 namespace WebCore {
