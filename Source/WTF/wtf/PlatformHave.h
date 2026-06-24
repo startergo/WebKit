@@ -281,7 +281,13 @@
 #define HAVE_NSCURSOR 1
 #endif
 
-#if !defined(HAVE_QOS_CLASSES) && PLATFORM(COCOA)
+#if !defined(HAVE_QOS_CLASSES) && PLATFORM(COCOA) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
+// [leopard] QoS classes (pthread_set_qos_class_self_np / pthread_attr_set_qos_
+// class_np / QOS_CLASS_*) are 10.10+. On 10.6 these symbols are unbound, so any
+// HAVE(QOS_CLASSES)-guarded call jumps to NULL (SIGSEGV) - observed on the
+// bmalloc scavenger thread under memory pressure (youtube.com). WTF/bmalloc
+// compiles do NOT force-include the LEOPARD_WEBKIT overlay, so gate on the
+// SDK-provided deployment target (always defined) rather than LEOPARD_WEBKIT.
 #define HAVE_QOS_CLASSES 1
 #endif
 

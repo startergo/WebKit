@@ -536,7 +536,12 @@ void Scavenger::setThreadName(const char* name)
 
 void Scavenger::setSelfQOSClass()
 {
-#if BOS(DARWIN)
+#if BOS(DARWIN) && (!defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
+    // [leopard] pthread_set_qos_class_self_np is 10.10+; on 10.6 the symbol is
+    // unbound and the indirect call jumps to NULL (SIGSEGV at threadRunLoop+535
+    // on the bmalloc scavenger thread, triggered under memory pressure from
+    // heavy pages like youtube.com). QoS is only a thread-priority hint, so
+    // skipping it on 10.6 is harmless.
     pthread_set_qos_class_self_np(requestedScavengerThreadQOSClass(), 0);
 #endif
 }
