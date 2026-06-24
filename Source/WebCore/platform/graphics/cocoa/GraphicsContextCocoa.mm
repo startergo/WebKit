@@ -64,9 +64,27 @@ namespace WebCore {
 
 static bool drawFocusRingAtTime(CGContextRef context, NSTimeInterval timeOffset, const Color& color)
 {
-#if USE(APPKIT)
+#if USE(APPKIT) && !(defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) && __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 1070)
     CGFocusRingStyle focusRingStyle;
     BOOL needsRepaint = NSInitializeCGFocusRingStyleForTime(NSFocusRingOnly, &focusRingStyle, timeOffset);
+#elif USE(APPKIT)
+    // [leopard] NSInitializeCGFocusRingStyleForTime is 10.7+ and absent from 10.6
+    // AppKit; calling it jumps to a null symbol (SIGSEGV when painting any focus
+    // ring, e.g. a focused text field). CGStyleCreateFocusRingWithColor IS present
+    // on 10.6, so initialize the CGFocusRingStyle manually with standard Aqua focus
+    // ring values and proceed.
+    BOOL needsRepaint = NO;
+    UNUSED_PARAM(timeOffset);
+
+    CGFocusRingStyle focusRingStyle;
+    bzero(&focusRingStyle, sizeof(focusRingStyle));
+    focusRingStyle.version = 0;
+    focusRingStyle.tint = kCGFocusRingTintBlue;
+    focusRingStyle.ordering = kCGFocusRingOrderingNone;
+    focusRingStyle.alpha = 0.5;
+    focusRingStyle.radius = 3;
+    focusRingStyle.threshold = 0.5;
+    focusRingStyle.bounds = CGRectZero;
 #else
     BOOL needsRepaint = NO;
     UNUSED_PARAM(timeOffset);
