@@ -201,7 +201,12 @@
 
 @end
 
-#if PLATFORM(IOS_FAMILY)
+// [leopard] FormPromptAdditions (_isEdited) was restricted to PLATFORM(IOS_FAMILY)
+// upstream, but Safari 5.0.5 (the desktop wrapper hosting this injected WebKit) still
+// sends -[DOMHTMLInputElement _isEdited] when handling text fields -> unrecognized
+// selector crash on 10.6. lastChangeWasUserEdit() is available on all platforms, so
+// compile this category on Mac too.
+#if PLATFORM(IOS_FAMILY) || PLATFORM(MAC)
 
 @implementation DOMHTMLInputElement (FormPromptAdditions)
 
@@ -220,6 +225,13 @@
 }
 
 @end
+
+#endif // PLATFORM(IOS_FAMILY) || PLATFORM(MAC) -- end of _isEdited (Safari 5.0.5 needs it on Mac)
+
+// [leopard] The autocapitalize SPIs below use iOS-only WebCore APIs
+// (AutocapitalizeType / HTMLInputElement::autocapitalizeType()) that do not exist on
+// Mac, so this section stays iOS-only (Safari 5.0.5 desktop does not call them).
+#if PLATFORM(IOS_FAMILY)
 
 static WebAutocapitalizeType webAutocapitalizeType(AutocapitalizeType type)
 {
