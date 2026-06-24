@@ -596,7 +596,10 @@ static NSBundle *webInspectorUIBundle()
 
     CGFloat approximatelyHalfScreenSize = (window.screen.frame.size.width / 2) - 4;
     CGFloat minimumFullScreenWidth = std::max<CGFloat>(636, approximatelyHalfScreenSize);
-    [window setMinFullScreenContentSize:NSMakeSize(minimumFullScreenWidth, minimumWindowHeight)];
+    // [leopard] -[NSWindow setMinFullScreenContentSize:] is 10.11+; unrecognized
+    // selector on 10.6 (crashes when the Inspector frontend configures its window).
+    if ([window respondsToSelector:@selector(setMinFullScreenContentSize:)])
+        [window setMinFullScreenContentSize:NSMakeSize(minimumFullScreenWidth, minimumWindowHeight)];
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
     // [leopard-webkit-build] NSWindowCollectionBehaviorFullScreenAllowsTiling +
     // titlebarAppearsTransparent are 10.10+; on < 10.10 skip (inspector window just
