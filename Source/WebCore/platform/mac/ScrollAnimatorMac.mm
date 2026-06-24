@@ -1008,7 +1008,10 @@ void ScrollAnimatorMac::mouseIsDownInScrollbar(Scrollbar* scrollbar, bool mouseI
         return;
 
     if (NSScrollerImp *painter = scrollerImpForScrollbar(*scrollbar)) {
-        [painter setTracking:mouseIsDown];
+        // [leopard] -[NSScrollerImp setTracking:] is a later addition; absent on the 10.6
+        // partial NSScrollerImp -> doesNotRecognizeSelector crash on scrollbar mouse-down.
+        if ([painter respondsToSelector:@selector(setTracking:)])
+            [painter setTracking:mouseIsDown];
         if (mouseIsDown)
             [m_scrollerImpPair beginScrollGesture];
         else
