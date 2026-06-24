@@ -976,8 +976,13 @@ void ScrollAnimatorMac::mouseEnteredScrollbar(Scrollbar* scrollbar) const
     if ([m_scrollerImpPair overlayScrollerStateIsLocked])
         return;
 
-    if (NSScrollerImp *painter = scrollerImpForScrollbar(*scrollbar))
-        [painter mouseEnteredScroller];
+    if (NSScrollerImp *painter = scrollerImpForScrollbar(*scrollbar)) {
+        // [leopard] -[NSScrollerImp mouseEnteredScroller] is a later addition; the
+        // 10.6 NSScrollerImp is a partial class lacking it -> doesNotRecognizeSelector
+        // crash on mouse-move over a scrollbar. Legacy scrollbars need no hover state.
+        if ([painter respondsToSelector:@selector(mouseEnteredScroller)])
+            [painter mouseEnteredScroller];
+    }
 }
 
 void ScrollAnimatorMac::mouseExitedScrollbar(Scrollbar* scrollbar) const
@@ -989,8 +994,12 @@ void ScrollAnimatorMac::mouseExitedScrollbar(Scrollbar* scrollbar) const
     if ([m_scrollerImpPair overlayScrollerStateIsLocked])
         return;
 
-    if (NSScrollerImp *painter = scrollerImpForScrollbar(*scrollbar))
-        [painter mouseExitedScroller];
+    if (NSScrollerImp *painter = scrollerImpForScrollbar(*scrollbar)) {
+        // [leopard] -[NSScrollerImp mouseExitedScroller] is a later addition; absent on
+        // the 10.6 partial NSScrollerImp -> doesNotRecognizeSelector crash on mouse-move.
+        if ([painter respondsToSelector:@selector(mouseExitedScroller)])
+            [painter mouseExitedScroller];
+    }
 }
 
 void ScrollAnimatorMac::mouseIsDownInScrollbar(Scrollbar* scrollbar, bool mouseIsDown) const
