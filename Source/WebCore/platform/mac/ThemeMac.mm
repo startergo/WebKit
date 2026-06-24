@@ -720,7 +720,12 @@ NSView *ThemeMac::ensuredView(ScrollView* scrollView, const ControlStates& contr
     // Use a fake view.
     static WebCoreThemeView *themeView = [[WebCoreThemeView alloc] init];
     [themeView setFrameSize:NSSizeFromCGSize(scrollView->totalContentsSize())];
-    [themeView setAppearance:[NSAppearance currentAppearance]];
+    // [leopard] NSAppearance / -setAppearance: / +currentAppearance are 10.9+.
+    // On 10.6 NSAppearance does not exist; touching +[NSAppearance currentAppearance]
+    // traps during class init (SIGTRAP in _class_initialize). 10.6 has only the
+    // default Aqua appearance, so skip setting it.
+    if ([themeView respondsToSelector:@selector(setAppearance:)] && NSClassFromString(@"NSAppearance"))
+        [themeView setAppearance:[NSAppearance currentAppearance]];
 
     themeWindowHasKeyAppearance = !(controlStates.states() & ControlStates::WindowInactiveState);
 
