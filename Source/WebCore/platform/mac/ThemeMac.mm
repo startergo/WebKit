@@ -218,7 +218,13 @@ static void updateStates(NSCell* cell, const ControlStates& controlStates, bool 
     bool oldPressed = [cell isHighlighted];
     bool pressed = states & ControlStates::PressedState;
     if (pressed != oldPressed) {
-        [(NSButtonCell*)cell _setHighlighted:pressed animated:useAnimation];
+        // [leopard] -[NSButtonCell _setHighlighted:animated:] is 10.7+; unrecognized on
+        // 10.6 -> crash when a toggle button changes pressed state. Fall back to the
+        // public -setHighlighted: (10.0+); 10.6 has no control-state animation.
+        if ([(NSButtonCell*)cell respondsToSelector:@selector(_setHighlighted:animated:)])
+            [(NSButtonCell*)cell _setHighlighted:pressed animated:useAnimation];
+        else
+            [(NSButtonCell*)cell setHighlighted:pressed];
     }
     
     // Enabled state
@@ -486,7 +492,14 @@ static void paintToggleButton(ControlPart buttonType, ControlStates& controlStat
     bool useImageBuffer = pageScaleFactor != 1.0f || zoomFactor != 1.0f;
     bool isCellFocused = controlStates.states() & ControlStates::FocusState;
 
-    if ([toggleButtonCell _stateAnimationRunning]) {
+    // [leopard] -[NSButtonCell _stateAnimationRunning] and
+    // -[NSButtonCell _renderCurrentAnimationFrameInContext:atLocation:] are 10.7+ SPIs.
+    // On 10.6 they are absent (unrecognized selector -> crash when painting toggle
+    // buttons). 10.6 has no button state animations, so treat the animation as never
+    // running and always take the normal (non-animated) cell-draw path.
+    BOOL stateAnimationRunning = [toggleButtonCell respondsToSelector:@selector(_stateAnimationRunning)] && [toggleButtonCell _stateAnimationRunning];
+
+    if (stateAnimationRunning) {
         context.translate(inflatedRect.location());
         context.scale(FloatSize(1, -1));
         context.translate(0, -inflatedRect.height());
@@ -499,7 +512,7 @@ static void paintToggleButton(ControlPart buttonType, ControlStates& controlStat
 
     [toggleButtonCell setControlView:nil];
 
-    needsRepaint |= [toggleButtonCell _stateAnimationRunning];
+    needsRepaint |= ([toggleButtonCell respondsToSelector:@selector(_stateAnimationRunning)] && [toggleButtonCell _stateAnimationRunning]);
     controlStates.setNeedsRepaint(needsRepaint);
     if (needsRepaint)
         controlStates.setPlatformControl(toggleButtonCell.get());

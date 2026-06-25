@@ -96,6 +96,8 @@ WI.Layers3DContentView = class Layers3DContentView extends WI.ContentView
 
     selectLayerById(layerId)
     {
+        if (!this._renderer)
+            return;
         let layerGroup = this._layerGroupsById.get(layerId);
         this._updateLayerGroupSelection(layerGroup);
         this._updateLayerInfoElement();
@@ -150,9 +152,38 @@ WI.Layers3DContentView = class Layers3DContentView extends WI.ContentView
         super.detached();
     }
 
+    static _webGLAvailable()
+    {
+        if (Layers3DContentView.__webGLAvailable !== undefined)
+            return Layers3DContentView.__webGLAvailable;
+        let available = false;
+        try {
+            let canvas = document.createElement("canvas");
+            available = !!(window.WebGLRenderingContext && (canvas.getContext("webgl") || canvas.getContext("experimental-webgl")));
+        } catch (e) {
+            available = false;
+        }
+        Layers3DContentView.__webGLAvailable = available;
+        return available;
+    }
+
     initialLayout()
     {
         super.initialLayout();
+
+        // [leopard] On the 10.6 software-GPU VM there is no usable WebGL context, so
+        // THREE.WebGLRenderer's constructor calls gl.getExtension() on a null context
+        // and throws, which aborts the entire Web Inspector layout (blank Inspector).
+        // Detect WebGL up front and, if absent, show a placeholder and skip 3D init so
+        // the rest of the Inspector (Elements, Network, Console, etc.) works normally.
+        if (!Layers3DContentView._webGLAvailable()) {
+            if (!this._unavailableMessageElement) {
+                this._unavailableMessageElement = this.element.appendChild(document.createElement("div"));
+                this._unavailableMessageElement.className = "message-text-view";
+                this._unavailableMessageElement.textContent = WI.UIString("3D Layers view is unavailable (no WebGL).");
+            }
+            return;
+        }
 
         this._renderer = new THREE.WebGLRenderer({antialias: true});
         this._renderer.setSize(this.element.offsetWidth, this.element.offsetHeight);
@@ -213,6 +244,9 @@ WI.Layers3DContentView = class Layers3DContentView extends WI.ContentView
     {
         super.sizeDidChange();
 
+        if (!this._renderer)
+            return;
+
         this._stopAnimation();
         this._camera.aspect = this.element.offsetWidth / this.element.offsetHeight;
         this._camera.updateProjectionMatrix();
@@ -229,6 +263,8 @@ WI.Layers3DContentView = class Layers3DContentView extends WI.ContentView
 
     _animate()
     {
+        if (!this._renderer)
+            return;
         this._controls.update();
         this._restrictPan();
         this._renderer.render(this._scene, this._camera);
@@ -257,6 +293,8 @@ WI.Layers3DContentView = class Layers3DContentView extends WI.ContentView
 
     _updateLayers(newLayers)
     {
+        if (!this._renderer)
+            return;
         // FIXME: This should be made into the basic usage of the manager, if not the agent itself.
         //        At that point, we can remove this duplication from the visualization and sidebar.
         let {removals, additions} = WI.layerTreeManager.layerTreeMutations(this._layers, newLayers);
@@ -366,6 +404,8 @@ WI.Layers3DContentView = class Layers3DContentView extends WI.ContentView
 
     _updateLayerGroupSelection(layerGroup)
     {
+        if (!this._renderer)
+            return;
         let setColor = ({fill, stroke}) => {
             let [plane, outline] = this._selectedLayerGroup.children;
             plane.material.color.set(fill);
