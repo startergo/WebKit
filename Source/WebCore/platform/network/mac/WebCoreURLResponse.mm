@@ -335,7 +335,14 @@ NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLRequest *currentReques
     if (redirectResponse)
         return redirectResponse;
 
-    if ([[[newRequest URL] scheme] isEqualToString:[[currentRequest URL] scheme]] && ![newRequest _schemeWasUpgradedDueToDynamicHSTS])
+    // [leopard] -[NSURLRequest _schemeWasUpgradedDueToDynamicHSTS] is a 10.7+ SPI. On
+    // 10.6 NSURLRequest does not implement it, so sending it returns garbage (or worse).
+    // When the selector is absent, treat it as NO (10.6 has no dynamic-HSTS upgrade).
+    // Without this guard the condition mis-evaluates and a synthetic redirect is created
+    // for EVERY same-scheme cross-origin request (e.g. github.githubassets.com CSS/JS),
+    // which then fails the CORS redirect check ("non CORS scheme") -> assets never load.
+    BOOL schemeUpgradedByHSTS = [newRequest respondsToSelector:@selector(_schemeWasUpgradedDueToDynamicHSTS)] && [newRequest _schemeWasUpgradedDueToDynamicHSTS];
+    if ([[[newRequest URL] scheme] isEqualToString:[[currentRequest URL] scheme]] && !schemeUpgradedByHSTS)
         return nil;
 
     return [[ResourceResponse::syntheticRedirectResponse(URL([currentRequest URL]), URL([newRequest URL])).nsURLResponse() retain] autorelease];
