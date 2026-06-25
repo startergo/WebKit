@@ -341,11 +341,21 @@ NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLRequest *currentReques
     // Without this guard the condition mis-evaluates and a synthetic redirect is created
     // for EVERY same-scheme cross-origin request (e.g. github.githubassets.com CSS/JS),
     // which then fails the CORS redirect check ("non CORS scheme") -> assets never load.
+    // [leopard] On 10.6 currentRequest is nil on the initial load of a subresource (no
+    // prior request -> not a redirect at all). With a nil currentRequest, [currentRequest
+    // URL] scheme] is nil and -[NSString isEqualToString:nil] is NO, so the same-scheme
+    // guard below fails and a synthetic redirect gets fabricated for EVERY first request
+    // (cur=(null) in logs). That phantom redirect then fails the CORS redirect check and
+    // every cross-origin CDN asset (github.githubassets.com CSS/JS) is denied -> unstyled
+    // page. A synthetic redirect only makes sense when there is a real prior request whose
+    // scheme actually changed; if currentRequest is nil, there is no redirect to synthesize.
+    if (!currentRequest)
+        return nil;
+
     BOOL schemeUpgradedByHSTS = [newRequest respondsToSelector:@selector(_schemeWasUpgradedDueToDynamicHSTS)] && [newRequest _schemeWasUpgradedDueToDynamicHSTS];
     if ([[[newRequest URL] scheme] isEqualToString:[[currentRequest URL] scheme]] && !schemeUpgradedByHSTS)
         return nil;
 
-    WTFLogAlways("[leopard-synth] FABRICATING redirect cur=%s new=%s hsts=%d", [[[currentRequest URL] absoluteString] UTF8String], [[[newRequest URL] absoluteString] UTF8String], (int)schemeUpgradedByHSTS);
     return [[ResourceResponse::syntheticRedirectResponse(URL([currentRequest URL]), URL([newRequest URL])).nsURLResponse() retain] autorelease];
 }
 
