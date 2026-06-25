@@ -201,6 +201,14 @@ void ResourceRequest::doUpdatePlatformRequest()
     for (const auto& header : httpHeaderFields())
         [nsRequest setValue:header.value forHTTPHeaderField:header.key];
 
+    // [leopard] 10.6's HTTP stack cannot decode Brotli (Content-Encoding: br). Modern
+    // CDNs (e.g. github.githubassets.com) serve br when it is advertised, and the
+    // undecodable body comes back empty -> CSS/JS silently fail to load (pages render
+    // unstyled with no scripts). Force Accept-Encoding to gzip/deflate AFTER the header
+    // copy above (which would otherwise restore a br-containing value), so the server
+    // sends a 10.6-decodable encoding.
+    [nsRequest setValue:@"gzip, deflate" forHTTPHeaderField:@"Accept-Encoding"];
+
     [nsRequest setContentDispositionEncodingFallbackArray:createNSArray(m_responseContentDispositionEncodingFallbackArray, [] (auto& name) -> NSNumber * {
         auto encoding = CFStringConvertEncodingToNSStringEncoding(CFStringConvertIANACharSetNameToEncoding(name.createCFString().get()));
         if (encoding == kCFStringEncodingInvalidId)
