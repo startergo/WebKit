@@ -144,6 +144,11 @@ ResourceResponse ResourceResponseBase::syntheticRedirectResponse(const URL& from
     redirectResponse.setHTTPVersion("HTTP/1.1"_s);
     redirectResponse.setHTTPHeaderField(HTTPHeaderName::Location, toURL.string());
     redirectResponse.setHTTPHeaderField(HTTPHeaderName::CacheControl, "no-store"_s);
+    // [leopard] Allow CORS redirect checks to pass on synthetic (HSTS scheme-upgrade)
+    // redirects. Without this, a scheme-change redirect to a cross-origin asset host
+    // (e.g. github.githubassets.com for GitHub's CSS/JS) is denied by the CORS check
+    // and the resources fail to load, leaving the page unstyled.
+    redirectResponse.setHTTPHeaderField(HTTPHeaderName::AccessControlAllowOrigin, "*"_s);
 
     return redirectResponse;
 }

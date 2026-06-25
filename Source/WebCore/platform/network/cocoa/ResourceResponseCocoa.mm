@@ -64,7 +64,16 @@ void ResourceResponse::initNSURLResponse() const
     for (auto& header : m_httpHeaderFields)
         [headerDictionary setObject:(NSString *)header.value forKey:(NSString *)header.key];
 
-    m_nsResponse = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_url statusCode:m_httpStatusCode HTTPVersion:(NSString*)kCFHTTPVersion1_1 headerFields:headerDictionary]);
+    // [leopard] The public initWithURL:statusCode:HTTPVersion:headerFields: is 10.7+.
+    // On 10.6, use the private initWithURL:statusCode:headerFields:requestTime: SPI.
+    // Without a proper NSHTTPURLResponse, CORS checks reject cross-origin redirects
+    // (e.g. github.githubassets.com CSS/JS assets fail to load -> unstyled page).
+    if ([NSHTTPURLResponse instancesRespondToSelector:@selector(initWithURL:statusCode:HTTPVersion:headerFields:)])
+        m_nsResponse = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_url statusCode:m_httpStatusCode HTTPVersion:(NSString*)kCFHTTPVersion1_1 headerFields:headerDictionary]);
+    else if ([NSHTTPURLResponse instancesRespondToSelector:@selector(initWithURL:statusCode:headerFields:requestTime:)])
+        m_nsResponse = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_url statusCode:m_httpStatusCode headerFields:headerDictionary requestTime:0]);
+    else
+        m_nsResponse = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_url MIMEType:m_mimeType expectedContentLength:static_cast<NSInteger>(m_expectedContentLength) textEncodingName:nsStringNilIfEmpty(m_textEncodingName)]);
 
     // Mime type sniffing doesn't work with a synthesized response.
     [m_nsResponse.get() _setMIMEType:(NSString *)m_mimeType];
