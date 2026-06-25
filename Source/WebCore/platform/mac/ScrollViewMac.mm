@@ -296,7 +296,12 @@ static inline NSScrollerKnobStyle toNSScrollerKnobStyle(ScrollbarOverlayStyle st
 
 void ScrollView::platformSetScrollbarOverlayStyle(ScrollbarOverlayStyle overlayStyle)
 {
-    [scrollView() setScrollerKnobStyle:toNSScrollerKnobStyle(overlayStyle)];
+    // [leopard] -[NSScrollView setScrollerKnobStyle:] is a 10.7+ overlay-scrollbar SPI;
+    // absent on 10.6 (legacy scrollbars only) -> unrecognized selector when a stylesheet
+    // changes the scrollbar overlay style (e.g. after GitHub's CSS loads and sets a
+    // background color). Guard with respondsToSelector:; 10.6 has no overlay knob style.
+    if ([scrollView() respondsToSelector:@selector(setScrollerKnobStyle:)])
+        [scrollView() setScrollerKnobStyle:toNSScrollerKnobStyle(overlayStyle)];
 }
 
 void ScrollView::platformSetScrollOrigin(const IntPoint& origin, bool updatePositionAtAll, bool updatePositionSynchronously)
