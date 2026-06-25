@@ -2354,7 +2354,11 @@ NSSearchFieldCell* RenderThemeMac::search() const
         [m_search.get() setBezeled:YES];
         [m_search.get() setEditable:YES];
         [m_search.get() setFocusRingType:NSFocusRingTypeExterior];
-        [m_search.get() setCenteredLook:NO];
+        // [leopard] -[NSSearchFieldCell setCenteredLook:] is a 10.7+ private SPI; absent
+        // on 10.6 -> unrecognized selector when rendering search fields (e.g. the Web
+        // Inspector console filter box). Guard it; the centered look is cosmetic.
+        if ([m_search.get() respondsToSelector:@selector(setCenteredLook:)])
+            [m_search.get() setCenteredLook:NO];
     }
 
     return m_search.get();

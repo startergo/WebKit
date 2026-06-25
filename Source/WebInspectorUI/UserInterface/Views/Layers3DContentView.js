@@ -222,6 +222,12 @@ WI.Layers3DContentView = class Layers3DContentView extends WI.ContentView
 
     layout()
     {
+        // [leopard] When WebGL is unavailable the 3D renderer/scene were never created
+        // (see initialLayout), so the document/layer update chain below would deref a
+        // null this._scene. Skip it entirely; the "unavailable" placeholder is shown.
+        if (!this._renderer)
+            return;
+
         if (this.layoutReason === WI.View.LayoutReason.Resize)
             return;
 
