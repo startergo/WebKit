@@ -633,8 +633,14 @@ Expected<void, String> SubresourceLoader::checkRedirectionCrossOriginAccessContr
     // Implementing https://fetch.spec.whatwg.org/#concept-http-redirect-fetch step 7 & 8.
     if (options().mode == FetchOptions::Mode::Cors) {
         if (m_resource->isCrossOrigin()) {
-            auto locationString = redirectResponse.httpHeaderField(HTTPHeaderName::Location);
-            String errorMessage = validateCrossOriginRedirectionURL(URL(redirectResponse.url(), locationString));
+            // [leopard] 605 validates the already-resolved newRequest.url() here; 610
+            // rebuilt the redirect URL from redirectResponse.url() + the Location header.
+            // On 10.6 the redirect can be synthetic with no Location, so the rebuilt URL
+            // has an empty scheme and validateCrossOriginRedirectionURL returns the
+            // "non CORS scheme" error, blocking every cross-origin CDN asset
+            // (github.githubassets.com CSS/JS) -> pages render unstyled. Validate the
+            // resolved newRequest.url() (a proper https URL) like 605 does instead.
+            String errorMessage = validateCrossOriginRedirectionURL(newRequest.url());
             if (!errorMessage.isNull())
                 return makeUnexpected(WTFMove(errorMessage));
         }
