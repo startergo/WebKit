@@ -435,7 +435,7 @@ private:
     bool m_isMediaPreloadingEnabled { false };
     bool m_isPaintTimingEnabled { false };
     bool m_isResourceTimingEnabled { false };
-    bool m_isUserTimingEnabled { false };
+    bool m_isUserTimingEnabled { true };
     bool m_isInteractiveFormValidationEnabled { false };
     bool m_isWebAuthenticationEnabled { false };
     bool m_isWebAuthenticationLocalAuthenticatorEnabled { false };

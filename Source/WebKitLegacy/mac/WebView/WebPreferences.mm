@@ -694,7 +694,7 @@ public:
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
 #endif
-        @NO, WebKitUserTimingEnabledPreferenceKey,
+        @YES, WebKitUserTimingEnabledPreferenceKey,
         @NO, WebKitResourceTimingEnabledPreferenceKey,
         @NO, WebKitMediaUserGestureInheritsFromDocument,
         @NO, WebKitIsSecureContextAttributeEnabledPreferenceKey,
