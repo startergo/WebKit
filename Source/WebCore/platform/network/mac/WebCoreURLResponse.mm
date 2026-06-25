@@ -345,6 +345,7 @@ NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLRequest *currentReques
     if ([[[newRequest URL] scheme] isEqualToString:[[currentRequest URL] scheme]] && !schemeUpgradedByHSTS)
         return nil;
 
+    WTFLogAlways("[leopard-synth] FABRICATING redirect cur=%s new=%s hsts=%d", [[[currentRequest URL] absoluteString] UTF8String], [[[newRequest URL] absoluteString] UTF8String], (int)schemeUpgradedByHSTS);
     return [[ResourceResponse::syntheticRedirectResponse(URL([currentRequest URL]), URL([newRequest URL])).nsURLResponse() retain] autorelease];
 }
 
