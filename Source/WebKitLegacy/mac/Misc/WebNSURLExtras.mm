@@ -217,6 +217,43 @@ using namespace WTF;
 
     return [NSURL URLWithString:[@"file:" stringByAppendingString:[self absoluteString]]];
 }
+
+- (NSURL *)_web_URLWithLowercasedScheme
+{
+    CFRange range = CFURLGetByteRangeForComponent((CFURLRef)self, kCFURLComponentScheme, nullptr);
+    if (range.location == kCFNotFound)
+        return self;
+
+    UInt8 staticBuffer[URL_BYTES_BUFFER_LENGTH];
+    UInt8 *buffer = staticBuffer;
+    CFIndex bytesFilled = CFURLGetBytes((CFURLRef)self, buffer, URL_BYTES_BUFFER_LENGTH);
+    if (bytesFilled == -1) {
+        CFIndex bytesToAllocate = CFURLGetBytes((CFURLRef)self, nullptr, 0);
+        buffer = static_cast<UInt8 *>(malloc(bytesToAllocate));
+        bytesFilled = CFURLGetBytes((CFURLRef)self, buffer, bytesToAllocate);
+    }
+
+    BOOL changed = NO;
+    for (CFIndex i = 0; i < range.length; ++i) {
+        UInt8 c = buffer[range.location + i];
+        if (c >= 'A' && c <= 'Z') {
+            buffer[range.location + i] = toASCIILower(c);
+            changed = YES;
+        }
+    }
+
+    NSURL *result;
+    if (changed) {
+        NSData *data = [NSData dataWithBytes:buffer length:bytesFilled];
+        result = [NSURL _web_URLWithData:data];
+    } else
+        result = self;
+
+    if (buffer != staticBuffer)
+        free(buffer);
+
+    return result;
+}
 @end
 
 @implementation NSString (WebNSURLExtras)
