@@ -168,7 +168,13 @@ static int walAutomaticTruncationHook(void* context, sqlite3* db, const char* db
 
     if (walPageCount >= checkpointThreshold) {
         int newWalPageCount = 0;
+#if defined(SQLITE_VERSION_NUMBER) && SQLITE_VERSION_NUMBER >= 3007000
         int result = sqlite3_wal_checkpoint_v2(db, dbName, SQLITE_CHECKPOINT_TRUNCATE, &newWalPageCount, nullptr);
+#else
+        int result = SQLITE_OK;
+        UNUSED_PARAM(db);
+        UNUSED_PARAM(dbName);
+#endif
 
 #if LOG_DISABLED
         UNUSED_VARIABLE(result);
@@ -190,7 +196,11 @@ static int walAutomaticTruncationHook(void* context, sqlite3* db, const char* db
 
 void SQLiteDatabase::enableAutomaticWALTruncation()
 {
+#if defined(SQLITE_VERSION_NUMBER) && SQLITE_VERSION_NUMBER >= 3007000
     sqlite3_wal_hook(m_db, walAutomaticTruncationHook, nullptr);
+#else
+    UNUSED_PARAM(walAutomaticTruncationHook);
+#endif
 }
 
 void SQLiteDatabase::useWALJournalMode()
