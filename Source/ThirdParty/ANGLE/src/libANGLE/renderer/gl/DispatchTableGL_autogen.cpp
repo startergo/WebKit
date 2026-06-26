@@ -2610,6 +2610,18 @@ void DispatchTableGL::initProcsGLES(const gl::Version &version,
         ASSIGN("glIsVertexArrayOES", isVertexArray);
     }
 
+    if (extensions.count("GL_APPLE_vertex_array_object") != 0)
+    {
+        if (bindVertexArray == nullptr)
+            ASSIGN("glBindVertexArrayAPPLE", bindVertexArray);
+        if (deleteVertexArrays == nullptr)
+            ASSIGN("glDeleteVertexArraysAPPLE", deleteVertexArrays);
+        if (genVertexArrays == nullptr)
+            ASSIGN("glGenVertexArraysAPPLE", genVertexArrays);
+        if (isVertexArray == nullptr)
+            ASSIGN("glIsVertexArrayAPPLE", isVertexArray);
+    }
+
     if (extensions.count("GL_OES_viewport_array") != 0)
     {
         ASSIGN("glDisableiOES", disablei);
