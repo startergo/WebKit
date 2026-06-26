@@ -59,6 +59,7 @@
 #import <IOKit/IOKitLib.h>
 #import <OpenGL/gl.h>
 #import <OpenGL/OpenGL.h>
+#import <OpenGL/CGLIOSurface.h>
 #elif USE(ANGLE)
 #define EGL_EGL_PROTOTYPES 0
 // Skip the inclusion of ANGLE's explicit context entry points for now.
@@ -259,12 +260,14 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
         attribs.append(static_cast<CGLPixelFormatAttribute>(4));
     }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (m_isForWebGL2) {
         // FIXME: Instead of backing a WebGL2 GraphicsContextGLOpenGL with a OpenGL 4 context, we should instead back it with ANGLE.
         // Use an OpenGL 4 context for now until the ANGLE backend is ready.
         attribs.append(kCGLPFAOpenGLProfile);
         attribs.append(static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_GL4_Core));
     }
+#endif
 
     attribs.append(static_cast<CGLPixelFormatAttribute>(0));
 
@@ -277,8 +280,10 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     CGLContextObj sharedCGLContext = sharedContext ? static_cast<CGLContextObj>(sharedContext->m_contextObj) : nullptr;
 
     CGLError err = CGLCreateContext(pixelFormatObj, sharedCGLContext, &cglContext);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     GLint abortOnBlacklist = 0;
     CGLSetParameter(cglContext, kCGLCPAbortOnGPURestartStatusBlacklisted, &abortOnBlacklist);
+#endif
 
 #if PLATFORM(MAC) // FIXME: This probably should be USE(OPENGL) - see <rdar://53062794>.
 
@@ -681,7 +686,7 @@ void GraphicsContextGLOpenGL::checkGPUStatus()
     m_statusCheckCount = (m_statusCheckCount + 1) % statusCheckThreshold;
 
     GLint restartStatus = 0;
-#if USE(OPENGL)
+#if USE(OPENGL) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     CGLContextObj cglContext = static_cast<CGLContextObj>(platformGraphicsContextGL());
     CGLGetParameter(cglContext, kCGLCPGPURestartStatus, &restartStatus);
     if (restartStatus == kCGLCPGPURestartStatusBlacklisted) {
@@ -693,6 +698,8 @@ void GraphicsContextGLOpenGL::checkGPUStatus()
         forceContextLost();
         CGLSetCurrentContext(0);
     }
+#elif USE(OPENGL)
+    UNUSED_VARIABLE(restartStatus);
 #elif USE(OPENGL_ES)
     EAGLContext* currentContext = static_cast<EAGLContext*>(PlatformGraphicsContextGL());
     [currentContext getParameter:kEAGLCPGPURestartStatus to:&restartStatus];

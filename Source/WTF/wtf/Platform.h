@@ -172,7 +172,7 @@
 #define GL_SILENCE_DEPRECATION 1
 #endif
 
-#if USE(OPENGL) && !defined(HAVE_OPENGL_4)
+#if USE(OPENGL) && !defined(HAVE_OPENGL_4) && !(PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070)
 #define HAVE_OPENGL_4 1
 #endif
 
