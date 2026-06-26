@@ -92,7 +92,11 @@ namespace {
     auto attributes = context->contextAttributes();
     _devicePixelRatio = attributes.devicePixelRatio;
 #if USE(OPENGL) || USE(ANGLE)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     self.contentsOpaque = !attributes.alpha;
+#else
+    self.opaque = !attributes.alpha;
+#endif
     self.transform = CATransform3DIdentity;
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     self.contentsScale = _devicePixelRatio;
