@@ -335,7 +335,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cocoa/IOSurface.mm
     platform/graphics/cocoa/IOSurfacePoolCocoa.mm
     platform/graphics/cocoa/IntRectCocoa.mm
-# [leopard] removed (modern feature unused on 10.6): platform/graphics/cocoa/WebActionDisablingCALayerDelegate.mm
+    platform/graphics/cocoa/WebActionDisablingCALayerDelegate.mm
     platform/graphics/cocoa/WebCoreCALayerExtras.mm
     # [leopard] removed: platform/graphics/cocoa/WebCoreDecompressionSession.mm
     platform/graphics/cocoa/WebGLLayer.mm
@@ -581,7 +581,7 @@ list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/cocoa/FontCacheCoreText.h
     platform/graphics/cocoa/FontFamilySpecificationCoreText.h
     platform/graphics/cocoa/IOSurface.h
-# [leopard] removed (modern/non-essential on 10.6): platform/graphics/cocoa/WebActionDisablingCALayerDelegate.h
+    platform/graphics/cocoa/WebActionDisablingCALayerDelegate.h
     platform/graphics/cocoa/WebCoreCALayerExtras.h
 
     platform/graphics/mac/ColorMac.h

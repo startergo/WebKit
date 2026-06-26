@@ -328,7 +328,7 @@ platform/graphics/cocoa/IOSurfacePoolCocoa.mm
 platform/graphics/cocoa/IntRectCocoa.mm
 // [leopard] removed (media config, VIDEO subsystem unused): platform/graphics/cocoa/MediaEngineConfigurationFactoryCocoa.cpp
 platform/graphics/cocoa/SystemFontDatabaseCoreText.cpp
-// [leopard] removed (modern feature unused on 10.6): platform/graphics/cocoa/WebActionDisablingCALayerDelegate.mm
+platform/graphics/cocoa/WebActionDisablingCALayerDelegate.mm
 platform/graphics/cocoa/WebCoreCALayerExtras.mm
 // [leopard] removed (soft-links disabled framework): platform/graphics/cocoa/WebCoreDecompressionSession.mm
 platform/graphics/cocoa/WebGLLayer.mm

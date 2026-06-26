@@ -163,6 +163,9 @@ static const double progressAnimationNumFrames = 256;
 @interface WebCoreTextFieldCell : NSTextFieldCell
 @end
 
+@interface WebCoreSearchFieldCell : NSSearchFieldCell
+@end
+
 @implementation WebCoreTextFieldCell
 
 - (CFDictionaryRef)_adjustedCoreUIDrawOptionsForDrawingBordersOnly:(CFDictionaryRef)defaultOptions
@@ -191,6 +194,34 @@ static const double progressAnimationNumFrames = 256;
 - (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus maskOnly:(BOOL)maskOnly
 {
     return [self _adjustedCoreUIDrawOptionsForDrawingBordersOnly:[super _coreUIDrawOptionsWithFrame:cellFrame inView:controlView includeFocus:includeFocus maskOnly:maskOnly]];
+}
+
+@end
+
+@implementation WebCoreSearchFieldCell
+
+- (void)drawWithFrame:(NSRect)cellFrame inView:(NSView *)controlView
+{
+    [self setControlView:controlView];
+
+    CGContextRef context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+    CGContextSaveGState(context);
+
+    NSRect borderRect = NSInsetRect(cellFrame, 0.5, 0.5);
+    CGFloat radius = borderRect.size.height / 2.0;
+    if (radius > borderRect.size.width / 2.0)
+        radius = borderRect.size.width / 2.0;
+
+    NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:borderRect xRadius:radius yRadius:radius];
+
+    [[NSColor whiteColor] setFill];
+    [path fill];
+
+    [[NSColor colorWithCalibratedWhite:0.6 alpha:1.0] setStroke];
+    [path setLineWidth:1.0];
+    [path stroke];
+
+    CGContextRestoreGState(context);
 }
 
 @end
@@ -2349,7 +2380,7 @@ NSPopUpButtonCell* RenderThemeMac::popupButton() const
 NSSearchFieldCell* RenderThemeMac::search() const
 {
     if (!m_search) {
-        m_search = adoptNS([[NSSearchFieldCell alloc] initTextCell:@""]);
+        m_search = adoptNS([[WebCoreSearchFieldCell alloc] initTextCell:@""]);
         [m_search.get() setBezelStyle:NSTextFieldRoundedBezel];
         [m_search.get() setBezeled:YES];
         [m_search.get() setEditable:YES];

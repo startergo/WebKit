@@ -432,7 +432,10 @@ static bool drawCellFocusRingWithFrameAtTime(NSCell *cell, NSRect cellFrame, NSV
     CGContextSetStyle(cgContext, style.get());
 
     CGContextBeginTransparencyLayerWithRect(cgContext, NSRectToCGRect(cellFrame), nullptr);
-    [cell drawFocusRingMaskWithFrame:cellFrame inView:controlView];
+    if ([cell respondsToSelector:@selector(drawFocusRingMaskWithFrame:inView:)])
+        [cell drawFocusRingMaskWithFrame:cellFrame inView:controlView];
+    else
+        CGContextFillRect(cgContext, NSRectToCGRect(cellFrame));
     CGContextEndTransparencyLayer(cgContext);
 
     return needsRepaint;
