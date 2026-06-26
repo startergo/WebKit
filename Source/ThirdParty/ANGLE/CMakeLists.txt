@@ -140,6 +140,8 @@ else ()
         ${libangle_gl_sources}
         ${libangle_gl_cgl_sources}
         ${libangle_mac_sources}
+        ${libangle_gpu_info_util_sources}
+        ${libangle_gpu_info_util_mac_sources}
     )
     target_link_libraries(ANGLE PRIVATE
         "-framework OpenGL"
