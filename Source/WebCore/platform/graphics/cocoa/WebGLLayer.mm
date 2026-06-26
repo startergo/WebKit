@@ -42,6 +42,7 @@
 #if USE(OPENGL)
 #import <OpenGL/OpenGL.h>
 #import <OpenGL/gl.h>
+#import <OpenGL/CGLIOSurface.h>
 #endif
 
 #if USE(ANGLE)
@@ -57,6 +58,7 @@
 #import <ANGLE/gl2ext_angle.h>
 #endif
 
+#if USE(ANGLE)
 namespace {
     class ScopedRestoreTextureBinding {
         WTF_MAKE_NONCOPYABLE(ScopedRestoreTextureBinding);
@@ -77,6 +79,7 @@ namespace {
         GLint m_bindingValue { 0 };
     };
 }
+#endif // USE(ANGLE)
 
 @implementation WebGLLayer
 
