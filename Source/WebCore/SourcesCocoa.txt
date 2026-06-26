@@ -232,9 +232,10 @@ platform/graphics/MediaPlaybackTargetPicker.cpp
 
 // These sources can't be unified with others in case they are merged
 // with files that use the system OpenGL.
-platform/graphics/angle/ExtensionsGLANGLE.cpp @no-unify
-platform/graphics/angle/GraphicsContextGLANGLE.cpp @no-unify
-platform/graphics/angle/TemporaryANGLESetting.cpp @no-unify
+// [leopard] ANGLE WebGL backend disabled; using direct CGL/OpenGL path (USE_OPENGL) to match Safari 5.0.5
+// platform/graphics/angle/ExtensionsGLANGLE.cpp @no-unify
+// platform/graphics/angle/GraphicsContextGLANGLE.cpp @no-unify
+// platform/graphics/angle/TemporaryANGLESetting.cpp @no-unify
 
 // [leopard] removed: platform/graphics/avfoundation/SampleBufferDisplayLayer.cpp
 // [leopard] removed: platform/graphics/avfoundation/AVTrackPrivateAVFObjCImpl.mm @no-unify
