@@ -1197,7 +1197,7 @@ void PlatformCALayer::drawLayerContents(GraphicsContext& graphicsContext, WebCor
 
         // Set up an NSGraphicsContext for the context, so that parts of AppKit that rely on
         // the current NSGraphicsContext (e.g. NSCell drawing) get the right one.
-        NSGraphicsContext* layerContext = [NSGraphicsContext graphicsContextWithCGContext:context flipped:YES];
+        NSGraphicsContext* layerContext = [NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:YES];
         [NSGraphicsContext setCurrentContext:layerContext];
 #endif
     }
