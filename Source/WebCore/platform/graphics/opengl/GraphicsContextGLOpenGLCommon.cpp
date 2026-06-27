@@ -231,6 +231,15 @@ void GraphicsContextGLOpenGL::prepareTexture()
 
     makeContextCurrent();
 
+    {
+        GLint sv = 0; ::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &sv);
+        ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+        ::glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        ::glClear(GL_COLOR_BUFFER_BIT);
+        ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sv);
+        WTFLogAlways("[leopard-webgl] FORCED RED CLEAR of m_fbo=%u", m_fbo);
+    }
+
 #if !USE(COORDINATED_GRAPHICS)
     TemporaryOpenGLSetting scopedScissor(GL_SCISSOR_TEST, GL_FALSE);
     TemporaryOpenGLSetting scopedDither(GL_DITHER, GL_FALSE);
