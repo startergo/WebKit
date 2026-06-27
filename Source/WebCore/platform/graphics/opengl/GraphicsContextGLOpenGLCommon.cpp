@@ -231,19 +231,6 @@ void GraphicsContextGLOpenGL::prepareTexture()
 
     makeContextCurrent();
 
-    {
-        GLint sv = 0; ::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &sv);
-        ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
-        ::glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
-        ::glClear(GL_COLOR_BUFFER_BIT);
-        ::glFinish();
-        unsigned redpix[4] = {0,0,0,0};
-        ::glReadPixels(0, 0, 2, 2, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, redpix);
-        GLenum re = ::glGetError();
-        ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sv);
-        WTFLogAlways("[leopard-webgl] RED CLEAR m_fbo=%u px0=0x%08x readErr=0x%x", m_fbo, redpix[0], re);
-    }
-
 #if !USE(COORDINATED_GRAPHICS)
     TemporaryOpenGLSetting scopedScissor(GL_SCISSOR_TEST, GL_FALSE);
     TemporaryOpenGLSetting scopedDither(GL_DITHER, GL_FALSE);

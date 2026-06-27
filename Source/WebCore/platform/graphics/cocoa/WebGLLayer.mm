@@ -163,34 +163,9 @@ static void freeData(void *, const void *data, size_t /* size */)
     _context->readRenderingResultsForSnapshot(data, dataSize);
     {
         size_t total = width * height;
-        unsigned nzRR = 0;
-        for (size_t i = 0; i < total; ++i) if (((unsigned*)data)[i] & 0x00ffffff) nzRR++;
-
-        GLint saved=0; glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT,&saved);
-        glPixelStorei(GL_PACK_ROW_LENGTH,0); glPixelStorei(GL_PACK_ALIGNMENT,4);
-        unsigned nzFBO=0,nzMS=0;
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,_context->dbgFBO());
-        glReadPixels(0,0,width,height,GL_BGRA,GL_UNSIGNED_INT_8_8_8_8_REV,data);
-        for (size_t i=0;i<total;++i) if (((unsigned*)data)[i]&0x00ffffff) nzFBO++;
-        if (_context->dbgMSFBO()) {
-            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,_context->dbgMSFBO());
-            glReadPixels(0,0,width,height,GL_BGRA,GL_UNSIGNED_INT_8_8_8_8_REV,data);
-            for (size_t i=0;i<total;++i) if (((unsigned*)data)[i]&0x00ffffff) nzMS++;
-        }
-        while (glGetError() != GL_NO_ERROR) { }
-        unsigned nzBlit = 0; GLenum blitErr = 0;
-        if (_context->dbgMSFBO()) {
-            glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, _context->dbgMSFBO());
-            glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, _context->dbgFBO());
-            glBlitFramebufferEXT(0,0,width,height, 0,0,width,height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-            blitErr = glGetError();
-            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _context->dbgFBO());
-            glPixelStorei(GL_PACK_ROW_LENGTH,0); glPixelStorei(GL_PACK_ALIGNMENT,4);
-            glReadPixels(0,0,width,height,GL_BGRA,GL_UNSIGNED_INT_8_8_8_8_REV,data);
-            for (size_t i=0;i<total;++i) if (((unsigned*)data)[i]&0x00ffffff) nzBlit++;
-        }
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,saved);
-        WTFLogAlways("[leopard-webgl] resolve: %zux%zu aa=%d | nzRR=%u nzFBO=%u | manualBlit nz=%u blitErr=0x%x", width, height, (int)_context->dbgAA(), nzRR, nzFBO, nzBlit, blitErr);
+        unsigned nz = 0;
+        for (size_t i = 0; i < total; ++i) if (((unsigned*)data)[i] & 0x00ffffff) nz++;
+        WTFLogAlways("[leopard-webgl] snap: %zux%zu nonzeroRGB=%u/%zu", width, height, nz, total);
     }
 
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
