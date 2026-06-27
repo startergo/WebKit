@@ -162,12 +162,23 @@ static void freeData(void *, const void *data, size_t /* size */)
 
     _context->readRenderingResultsForSnapshot(data, dataSize);
     {
-        unsigned* px = (unsigned*)data;
         size_t total = width * height;
-        size_t mid = (height/2) * width + (width/2);
-        unsigned nonzero = 0;
-        for (size_t i = 0; i < total; ++i) if (px[i] & 0x00ffffff) { nonzero++; }
-        WTFLogAlways("[leopard-webgl] snap2d: %zux%zu midPixel=0x%08x nonzeroRGB=%u/%zu", width, height, px[mid], nonzero, total);
+        unsigned nzRR = 0;
+        for (size_t i = 0; i < total; ++i) if (((unsigned*)data)[i] & 0x00ffffff) nzRR++;
+
+        GLint saved=0; glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT,&saved);
+        glPixelStorei(GL_PACK_ROW_LENGTH,0); glPixelStorei(GL_PACK_ALIGNMENT,4);
+        unsigned nzFBO=0,nzMS=0;
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,_context->dbgFBO());
+        glReadPixels(0,0,width,height,GL_BGRA,GL_UNSIGNED_INT_8_8_8_8_REV,data);
+        for (size_t i=0;i<total;++i) if (((unsigned*)data)[i]&0x00ffffff) nzFBO++;
+        if (_context->dbgMSFBO()) {
+            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,_context->dbgMSFBO());
+            glReadPixels(0,0,width,height,GL_BGRA,GL_UNSIGNED_INT_8_8_8_8_REV,data);
+            for (size_t i=0;i<total;++i) if (((unsigned*)data)[i]&0x00ffffff) nzMS++;
+        }
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,saved);
+        WTFLogAlways("[leopard-webgl] where: %zux%zu aa=%d fbo=%u ms=%u | nzRR=%u nzFBOdirect=%u nzMSdirect=%u", width, height, (int)_context->dbgAA(), _context->dbgFBO(), _context->dbgMSFBO(), nzRR, nzFBO, nzMS);
     }
 
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
