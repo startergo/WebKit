@@ -177,13 +177,20 @@ static void freeData(void *, const void *data, size_t /* size */)
             glReadPixels(0,0,width,height,GL_BGRA,GL_UNSIGNED_INT_8_8_8_8_REV,data);
             for (size_t i=0;i<total;++i) if (((unsigned*)data)[i]&0x00ffffff) nzMS++;
         }
-        GLenum fbStat=0, msStat=0; GLfloat cc[4]={0,0,0,0};
-        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,_context->dbgFBO());
-        fbStat=glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-        if (_context->dbgMSFBO()) { glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,_context->dbgMSFBO()); msStat=glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT); }
-        glGetFloatv(GL_COLOR_CLEAR_VALUE, cc);
+        while (glGetError() != GL_NO_ERROR) { }
+        unsigned nzBlit = 0; GLenum blitErr = 0;
+        if (_context->dbgMSFBO()) {
+            glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, _context->dbgMSFBO());
+            glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, _context->dbgFBO());
+            glBlitFramebufferEXT(0,0,width,height, 0,0,width,height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+            blitErr = glGetError();
+            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _context->dbgFBO());
+            glPixelStorei(GL_PACK_ROW_LENGTH,0); glPixelStorei(GL_PACK_ALIGNMENT,4);
+            glReadPixels(0,0,width,height,GL_BGRA,GL_UNSIGNED_INT_8_8_8_8_REV,data);
+            for (size_t i=0;i<total;++i) if (((unsigned*)data)[i]&0x00ffffff) nzBlit++;
+        }
         glBindFramebufferEXT(GL_FRAMEBUFFER_EXT,saved);
-        WTFLogAlways("[leopard-webgl] where: %zux%zu aa=%d fbo=%u ms=%u | nzRR=%u nzFBO=%u nzMS=%u | fbStat=0x%x msStat=0x%x clear=%.2f,%.2f,%.2f,%.2f curFBO=%d glErr=0x%x", width, height, (int)_context->dbgAA(), _context->dbgFBO(), _context->dbgMSFBO(), nzRR, nzFBO, nzMS, fbStat, msStat, cc[0],cc[1],cc[2],cc[3], saved, glGetError());
+        WTFLogAlways("[leopard-webgl] resolve: %zux%zu aa=%d | nzRR=%u nzFBO=%u | manualBlit nz=%u blitErr=0x%x", width, height, (int)_context->dbgAA(), nzRR, nzFBO, nzBlit, blitErr);
     }
 
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
