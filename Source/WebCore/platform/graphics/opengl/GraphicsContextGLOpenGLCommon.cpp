@@ -236,8 +236,12 @@ void GraphicsContextGLOpenGL::prepareTexture()
         ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
         ::glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
         ::glClear(GL_COLOR_BUFFER_BIT);
+        ::glFinish();
+        unsigned redpix[4] = {0,0,0,0};
+        ::glReadPixels(0, 0, 2, 2, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, redpix);
+        GLenum re = ::glGetError();
         ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sv);
-        WTFLogAlways("[leopard-webgl] FORCED RED CLEAR of m_fbo=%u", m_fbo);
+        WTFLogAlways("[leopard-webgl] RED CLEAR m_fbo=%u immediate-read px0=0x%08x readErr=0x%x boundWas=%d", m_fbo, redpix[0], re, sv);
     }
 
 #if !USE(COORDINATED_GRAPHICS)
