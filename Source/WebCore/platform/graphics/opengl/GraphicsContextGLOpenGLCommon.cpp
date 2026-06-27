@@ -792,6 +792,16 @@ void GraphicsContextGLOpenGL::drawArrays(GCGLenum mode, GCGLint first, GCGLsizei
 void GraphicsContextGLOpenGL::drawElements(GCGLenum mode, GCGLsizei count, GCGLenum type, GCGLintptr offset)
 {
     makeContextCurrent();
+    {
+        static int drawCount = 0;
+        if (drawCount++ < 3) {
+            GLint boundFBO = 0, vp[4] = {0,0,0,0};
+            ::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &boundFBO);
+            ::glGetIntegerv(GL_VIEWPORT, vp);
+            GLenum preErr = ::glGetError();
+            WTFLogAlways("[leopard-webgl] drawElements: mode=0x%x count=%d boundFBO=%d m_fbo=%u m_msFBO=%u viewport=%d,%d,%d,%d preErr=0x%x", mode, count, boundFBO, m_fbo, m_multisampleFBO, vp[0],vp[1],vp[2],vp[3], preErr);
+        }
+    }
     ::glDrawElements(mode, count, type, reinterpret_cast<GLvoid*>(static_cast<intptr_t>(offset)));
     checkGPUStatus();
 }
