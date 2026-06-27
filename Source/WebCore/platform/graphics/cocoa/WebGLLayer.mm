@@ -161,6 +161,14 @@ static void freeData(void *, const void *data, size_t /* size */)
         return nullptr;
 
     _context->readRenderingResults(data, dataSize);
+    {
+        unsigned* px = (unsigned*)data;
+        size_t total = width * height;
+        size_t mid = (height/2) * width + (width/2);
+        unsigned nonzero = 0;
+        for (size_t i = 0; i < total; ++i) if (px[i] & 0x00ffffff) { nonzero++; }
+        WTFLogAlways("[leopard-webgl] snapshot2: %zux%zu antialias=%d midPixel=0x%08x nonzeroRGB=%u/%zu", width, height, (int)_context->contextAttributes().antialias, px[mid], nonzero, total);
+    }
 
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
     CGImageRef image = CGImageCreate(width, height, 8, 32, rowBytes, imageColorSpace.get(),
