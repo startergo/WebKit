@@ -253,7 +253,11 @@ void Widget::paint(GraphicsContext& p, const IntRect& r, SecurityOriginPaintPoli
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         NSGraphicsContext *nsContext = [NSGraphicsContext graphicsContextWithCGContext:cgContext flipped:NO];
+#else
+        NSGraphicsContext *nsContext = [NSGraphicsContext graphicsContextWithGraphicsPort:cgContext flipped:NO];
+#endif
         [view displayRectIgnoringOpacity:[view convertRect:r fromView:[view superview]] inContext:nsContext];
     }
     END_BLOCK_OBJC_EXCEPTIONS;
