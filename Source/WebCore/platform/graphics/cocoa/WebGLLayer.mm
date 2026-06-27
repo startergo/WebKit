@@ -148,25 +148,20 @@ static void freeData(void *, const void *data, size_t /* size */)
     if (!imageColorSpace)
         imageColorSpace = WebCore::sRGBColorSpaceRef();
 
-    CGRect layerBounds = CGRectIntegral([self bounds]);
+    WebCore::IntSize fbSize = _context->getInternalFramebufferSize();
+    size_t width = fbSize.width();
+    size_t height = fbSize.height();
+    if (!width || !height)
+        return nullptr;
 
-    size_t width = layerBounds.size.width * _devicePixelRatio;
-    size_t height = layerBounds.size.height * _devicePixelRatio;
-
-    size_t rowBytes = (width * 4 + 15) & ~15;
+    size_t rowBytes = width * 4;
     size_t dataSize = rowBytes * height;
-    void* data = fastMalloc(dataSize);
+    unsigned char* data = static_cast<unsigned char*>(fastMalloc(dataSize));
     if (!data)
         return nullptr;
 
-    GLint savedFBO = 0;
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &savedFBO);
-    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _context->getInternalFramebuffer());
-    glPixelStorei(GL_PACK_ROW_LENGTH, rowBytes / 4);
-    glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
-    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
+    _context->readRenderingResults(data, dataSize);
 
-    WebCore::verifyImageBufferIsBigEnough((uint8_t*)data, dataSize);
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
     CGImageRef image = CGImageCreate(width, height, 8, 32, rowBytes, imageColorSpace.get(),
         kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host, provider, 0, true, kCGRenderingIntentDefault);
