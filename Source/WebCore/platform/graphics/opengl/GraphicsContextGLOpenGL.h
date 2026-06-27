@@ -604,6 +604,7 @@ public:
     IntSize getInternalFramebufferSize() const;
     GCGLuint getInternalFramebuffer() const { return m_fbo; }
     void readRenderingResultsForSnapshot(unsigned char* pixels, int pixelsSize) { readRenderingResults(pixels, pixelsSize); }
+    void readViaCopyTexImage(unsigned char* pixels, int width, int height);
     GCGLuint dbgMSFBO() const { return m_multisampleFBO; }
     GCGLuint dbgFBO() const { return m_fbo; }
     bool dbgAA() const { return contextAttributes().antialias; }

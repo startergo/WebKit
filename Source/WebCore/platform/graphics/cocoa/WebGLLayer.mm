@@ -160,7 +160,7 @@ static void freeData(void *, const void *data, size_t /* size */)
     if (!data)
         return nullptr;
 
-    _context->readRenderingResultsForSnapshot(data, dataSize);
+    _context->readViaCopyTexImage(data, (int)width, (int)height);
     {
         size_t total = width * height;
         unsigned nz = 0;

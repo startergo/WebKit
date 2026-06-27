@@ -263,6 +263,37 @@ void GraphicsContextGLOpenGL::prepareTexture()
     ::glFlush();
 }
 
+void GraphicsContextGLOpenGL::readViaCopyTexImage(unsigned char* pixels, int width, int height)
+{
+    makeContextCurrent();
+
+    if (contextAttributes().antialias)
+        resolveMultisamplingIfNecessary();
+
+    ::glBindFramebufferEXT(GraphicsContextGL::FRAMEBUFFER, m_fbo);
+
+    GLuint tempTex = 0;
+    ::glGenTextures(1, &tempTex);
+    ::glBindTexture(GL_TEXTURE_2D, tempTex);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    ::glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, width, height, 0);
+
+    GLuint tempFBO = 0;
+    ::glGenFramebuffersEXT(1, &tempFBO);
+    ::glBindFramebufferEXT(GraphicsContextGL::FRAMEBUFFER, tempFBO);
+    ::glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, tempTex, 0);
+
+    ::glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    ::glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
+
+    ::glBindFramebufferEXT(GraphicsContextGL::FRAMEBUFFER, m_state.boundDrawFBO);
+    ::glDeleteFramebuffersEXT(1, &tempFBO);
+    ::glDeleteTextures(1, &tempTex);
+}
+
 void GraphicsContextGLOpenGL::readRenderingResults(unsigned char *pixels, int pixelsSize)
 {
     if (pixelsSize < m_currentWidth * m_currentHeight * 4)
