@@ -159,17 +159,12 @@ static void freeData(void *, const void *data, size_t /* size */)
     if (!data)
         return nullptr;
 
-    GLint boundFBO = 0;
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &boundFBO);
+    GLint savedFBO = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &savedFBO);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _context->getInternalFramebuffer());
     glPixelStorei(GL_PACK_ROW_LENGTH, rowBytes / 4);
     glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
-    {
-        unsigned* px = (unsigned*)data;
-        size_t mid = (height/2) * (rowBytes/4) + (width/2);
-        unsigned nonzero = 0;
-        for (size_t i = 0; i < width*height && i < dataSize/4; ++i) if (px[i]) { nonzero++; }
-        WTFLogAlways("[leopard-webgl] snapshot: boundFBO=%d %zux%zu readErr=0x%x midPixel=0x%08x nonzeroPixels=%u", boundFBO, width, height, glGetError(), px[mid], nonzero);
-    }
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
 
     WebCore::verifyImageBufferIsBigEnough((uint8_t*)data, dataSize);
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
