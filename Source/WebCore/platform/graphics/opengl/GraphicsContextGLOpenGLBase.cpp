@@ -192,6 +192,11 @@ bool GraphicsContextGLOpenGL::reshapeFBOs(const IntSize& size)
     allocateIOSurfaceBackingStore(IntSize(width, height));
     updateFramebufferTextureBackingStoreFromLayer();
     ::glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, m_texture, 0);
+    {
+        GLenum fbStatus = ::glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+        GLenum glErr = ::glGetError();
+        WTFLogAlways("[leopard-webgl] reshapeFBOs IOSurface: fbo=%u tex=%u %dx%d fbStatus=0x%x glError=0x%x", m_fbo, m_texture, width, height, fbStatus, glErr);
+    }
 #endif // !USE(OPENGL_ES))
 #else
     ::glBindTexture(GL_TEXTURE_2D, m_texture);
