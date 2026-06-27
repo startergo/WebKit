@@ -241,7 +241,7 @@ void GraphicsContextGLOpenGL::prepareTexture()
         ::glReadPixels(0, 0, 2, 2, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, redpix);
         GLenum re = ::glGetError();
         ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sv);
-        WTFLogAlways("[leopard-webgl] RED CLEAR m_fbo=%u px0=0x%08x readErr=0x%x curCGL=%p", m_fbo, redpix[0], re, CGLGetCurrentContext());
+        WTFLogAlways("[leopard-webgl] RED CLEAR m_fbo=%u px0=0x%08x readErr=0x%x", m_fbo, redpix[0], re);
     }
 
 #if !USE(COORDINATED_GRAPHICS)
