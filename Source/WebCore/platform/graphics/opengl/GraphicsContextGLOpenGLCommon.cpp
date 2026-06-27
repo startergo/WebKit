@@ -241,7 +241,7 @@ void GraphicsContextGLOpenGL::prepareTexture()
         ::glReadPixels(0, 0, 2, 2, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, redpix);
         GLenum re = ::glGetError();
         ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sv);
-        WTFLogAlways("[leopard-webgl] RED CLEAR m_fbo=%u immediate-read px0=0x%08x readErr=0x%x boundWas=%d", m_fbo, redpix[0], re, sv);
+        WTFLogAlways("[leopard-webgl] RED CLEAR m_fbo=%u px0=0x%08x readErr=0x%x curCGL=%p", m_fbo, redpix[0], re, CGLGetCurrentContext());
     }
 
 #if !USE(COORDINATED_GRAPHICS)
@@ -636,8 +636,12 @@ void GraphicsContextGLOpenGL::compileShader(PlatformGLObject shader)
     m_compiler.setResources(ANGLEResources);
     setCurrentNameHashMapForShader(nullptr);
 
-    if (!translatedShaderSource.length())
+    WTFLogAlways("[leopard-webgl] compileShader %u: origLen=%u translatedLen=%u", shader, (unsigned)getShaderSource(shader).length(), (unsigned)translatedShaderSource.length());
+
+    if (!translatedShaderSource.length()) {
+        WTFLogAlways("[leopard-webgl] compileShader %u: EMPTY TRANSLATION - bailing!", shader);
         return;
+    }
 
     const CString& translatedShaderCString = translatedShaderSource.utf8();
     const char* translatedShaderPtr = translatedShaderCString.data();
@@ -653,6 +657,7 @@ void GraphicsContextGLOpenGL::compileShader(PlatformGLObject shader)
     int compileStatus;
     
     ::glGetShaderiv(shader, COMPILE_STATUS, &compileStatus);
+    WTFLogAlways("[leopard-webgl] compileShader %u: compileStatus=%d", shader, compileStatus);
 
     ShaderSourceMap::iterator result = m_shaderSourceMap.find(shader);
     ShaderSourceEntry& entry = result->value;
