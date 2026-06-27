@@ -181,17 +181,21 @@ static void freeData(void *, const void *data, size_t /* size */)
         return;
 
 #if USE(OPENGL)
-    WTFLogAlways("[leopard-webgl] WebGLLayer display: drawingBuffer=%p", _drawingBuffer.get());
     _context->prepareTexture();
     if (_drawingBuffer) {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         std::swap(_contentsBuffer, _drawingBuffer);
-        id layerContents = _contentsBuffer->asLayerContents();
-        WTFLogAlways("[leopard-webgl] WebGLLayer display: setting contents=%p", layerContents);
-        self.contents = layerContents;
+        self.contents = _contentsBuffer->asLayerContents();
         [self reloadValueForKeyPath:@"contents"];
         [self bindFramebufferToNextAvailableSurface];
-    } else {
-        WTFLogAlways("[leopard-webgl] WebGLLayer display: NO drawingBuffer, nothing to show");
+#else
+        // [leopard] 10.6 CALayer cannot composite a raw IOSurface set as -contents
+        // (that is a 10.7+ capability). Read the rendered pixels back into a CGImage,
+        // which 10.6 CoreAnimation does accept as layer contents.
+        RetainPtr<CGImageRef> image = adoptCF([self copyImageSnapshotWithColorSpace:WebCore::sRGBColorSpaceRef()]);
+        self.contents = (__bridge id)image.get();
+        [self reloadValueForKeyPath:@"contents"];
+#endif
     }
 #elif USE(OPENGL_ES)
     _context->presentRenderbuffer();
