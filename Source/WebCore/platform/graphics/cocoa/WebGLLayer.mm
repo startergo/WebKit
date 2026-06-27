@@ -148,39 +148,30 @@ static void freeData(void *, const void *data, size_t /* size */)
     if (!imageColorSpace)
         imageColorSpace = WebCore::sRGBColorSpaceRef();
 
-    glFinish();
-
-    if (!_drawingBuffer)
-        return nullptr;
-    IOSurfaceRef surf = _drawingBuffer->surface();
-    if (!surf)
+    WebCore::IntSize fbSize = _context->getInternalFramebufferSize();
+    size_t width = fbSize.width();
+    size_t height = fbSize.height();
+    if (!width || !height)
         return nullptr;
 
-    IOSurfaceLock(surf, kIOSurfaceLockReadOnly, nullptr);
-    size_t sWidth = IOSurfaceGetWidth(surf);
-    size_t sHeight = IOSurfaceGetHeight(surf);
-    size_t sRowBytes = IOSurfaceGetBytesPerRow(surf);
-    void* sBase = IOSurfaceGetBaseAddress(surf);
-
-    size_t dataSize = sRowBytes * sHeight;
+    size_t rowBytes = width * 4;
+    size_t dataSize = rowBytes * height;
     unsigned char* data = static_cast<unsigned char*>(fastMalloc(dataSize));
-    if (!data) {
-        IOSurfaceUnlock(surf, kIOSurfaceLockReadOnly, nullptr);
+    if (!data)
         return nullptr;
-    }
-    memcpy(data, sBase, dataSize);
-    IOSurfaceUnlock(surf, kIOSurfaceLockReadOnly, nullptr);
+
+    _context->readRenderingResultsForSnapshot(data, dataSize);
     {
         unsigned* px = (unsigned*)data;
-        size_t total = sWidth * sHeight;
-        size_t mid = (sHeight/2) * (sRowBytes/4) + (sWidth/2);
+        size_t total = width * height;
+        size_t mid = (height/2) * width + (width/2);
         unsigned nonzero = 0;
         for (size_t i = 0; i < total; ++i) if (px[i] & 0x00ffffff) { nonzero++; }
-        WTFLogAlways("[leopard-webgl] iosurf: %zux%zu rowBytes=%zu midPixel=0x%08x nonzeroRGB=%u/%zu", sWidth, sHeight, sRowBytes, px[mid], nonzero, total);
+        WTFLogAlways("[leopard-webgl] snap2d: %zux%zu midPixel=0x%08x nonzeroRGB=%u/%zu", width, height, px[mid], nonzero, total);
     }
 
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
-    CGImageRef image = CGImageCreate(sWidth, sHeight, 8, 32, sRowBytes, imageColorSpace.get(),
+    CGImageRef image = CGImageCreate(width, height, 8, 32, rowBytes, imageColorSpace.get(),
         kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host, provider, 0, true, kCGRenderingIntentDefault);
     CGDataProviderRelease(provider);
     return image;
@@ -198,21 +189,23 @@ static void freeData(void *, const void *data, size_t /* size */)
 
 #if USE(OPENGL)
     _context->prepareTexture();
-    if (_drawingBuffer) {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+    if (_drawingBuffer) {
         std::swap(_contentsBuffer, _drawingBuffer);
         self.contents = _contentsBuffer->asLayerContents();
         [self reloadValueForKeyPath:@"contents"];
         [self bindFramebufferToNextAvailableSurface];
+    }
 #else
-        // [leopard] 10.6 CALayer cannot composite a raw IOSurface set as -contents
-        // (that is a 10.7+ capability). Read the rendered pixels back into a CGImage,
-        // which 10.6 CoreAnimation does accept as layer contents.
+    // [leopard] No IOSurface on 10.6: render target is a plain GL_TEXTURE_2D
+    // FBO. Read it back into a CGImage, which 10.6 CoreAnimation accepts as
+    // layer contents (raw IOSurface contents is a 10.7+ capability).
+    {
         RetainPtr<CGImageRef> image = adoptCF([self copyImageSnapshotWithColorSpace:WebCore::sRGBColorSpaceRef()]);
         self.contents = (__bridge id)image.get();
         [self reloadValueForKeyPath:@"contents"];
-#endif
     }
+#endif
 #elif USE(OPENGL_ES)
     _context->presentRenderbuffer();
 #elif USE(ANGLE)

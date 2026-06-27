@@ -453,6 +453,7 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     ::glGenRenderbuffers(1, &m_texture);
 #elif USE(OPENGL)
     ::glGenTextures(1, &m_texture);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     // We bind to GL_TEXTURE_RECTANGLE_EXT rather than TEXTURE_2D because
     // that's what is required for a texture backed by IOSurface.
     ::glBindTexture(GL_TEXTURE_RECTANGLE_EXT, m_texture);
@@ -461,6 +462,16 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     ::glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     ::glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     ::glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+#else
+    // [leopard] On 10.6, render into a plain GL_TEXTURE_2D (IOSurface render-
+    // to-surface is unreliable here); the layer reads it back into a CGImage.
+    ::glBindTexture(GL_TEXTURE_2D, m_texture);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    ::glBindTexture(GL_TEXTURE_2D, 0);
+#endif
 
 #elif USE(ANGLE)
 
