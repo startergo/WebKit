@@ -816,6 +816,16 @@ void GraphicsContextGLOpenGL::disableVertexAttribArray(GCGLuint index)
 void GraphicsContextGLOpenGL::drawArrays(GCGLenum mode, GCGLint first, GCGLsizei count)
 {
     makeContextCurrent();
+    {
+        static int dc = 0;
+        if (dc++ < 4) {
+            GLint bf = 0, vp[4] = {0,0,0,0}, prog = 0;
+            ::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &bf);
+            ::glGetIntegerv(GL_VIEWPORT, vp);
+            ::glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+            WTFLogAlways("[leopard-webgl] drawArrays: mode=0x%x count=%d boundFBO=%d m_fbo=%u m_msFBO=%u prog=%d vp=%d,%d,%d,%d err=0x%x", mode, count, bf, m_fbo, m_multisampleFBO, prog, vp[0],vp[1],vp[2],vp[3], ::glGetError());
+        }
+    }
     ::glDrawArrays(mode, first, count);
     checkGPUStatus();
 }
@@ -823,6 +833,16 @@ void GraphicsContextGLOpenGL::drawArrays(GCGLenum mode, GCGLint first, GCGLsizei
 void GraphicsContextGLOpenGL::drawElements(GCGLenum mode, GCGLsizei count, GCGLenum type, GCGLintptr offset)
 {
     makeContextCurrent();
+    {
+        static int dc = 0;
+        if (dc++ < 4) {
+            GLint bf = 0, vp[4] = {0,0,0,0}, prog = 0;
+            ::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &bf);
+            ::glGetIntegerv(GL_VIEWPORT, vp);
+            ::glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+            WTFLogAlways("[leopard-webgl] drawElements: mode=0x%x count=%d boundFBO=%d m_fbo=%u m_msFBO=%u prog=%d vp=%d,%d,%d,%d err=0x%x", mode, count, bf, m_fbo, m_multisampleFBO, prog, vp[0],vp[1],vp[2],vp[3], ::glGetError());
+        }
+    }
     {
         static int drawCount = 0;
         if (drawCount++ < 3) {
