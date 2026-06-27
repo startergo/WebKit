@@ -216,10 +216,16 @@ void ExtensionsGLOpenGLCommon::initializeAvailableExtensions()
 {
 #if (PLATFORM(COCOA) && USE(OPENGL)) || (PLATFORM(GTK) && !USE(OPENGL_ES))
     if (m_useIndexedGetString) {
+#if PLATFORM(COCOA) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+        String extensionsString(reinterpret_cast<const char*>(::glGetString(GL_EXTENSIONS)));
+        for (auto& ext : extensionsString.split(' '))
+            m_availableExtensions.add(ext);
+#else
         GLint numExtensions = 0;
         ::glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
         for (GLint i = 0; i < numExtensions; ++i)
             m_availableExtensions.add(glGetStringi(GL_EXTENSIONS, i));
+#endif
 
         if (!m_availableExtensions.contains("GL_ARB_texture_storage"_s)) {
             GLint majorVersion;

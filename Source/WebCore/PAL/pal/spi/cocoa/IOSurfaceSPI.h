@@ -86,7 +86,12 @@ WTF_EXTERN_C_END
 
 #else
 
+// [leopard] LEOPARD_IOSURFACE: 10.6 has no IOSurfaceTypes.h; types live in IOSurfaceAPI.h.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+#import <IOSurface/IOSurfaceAPI.h>
+#else
 #import <IOSurface/IOSurfaceTypes.h>
+#endif
 
 #endif
 

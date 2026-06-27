@@ -286,7 +286,7 @@ PlatformCALayerCocoa::PlatformCALayerCocoa(LayerType layerType, PlatformCALayerC
         m_layer = adoptNS([(CALayer *)[layerClass alloc] init]);
 
 #if ENABLE(FILTERS_LEVEL_2) && PLATFORM(MAC)
-    if (layerType == LayerTypeBackdropLayer)
+    if (layerType == LayerTypeBackdropLayer && [m_layer.get() respondsToSelector:@selector(setWindowServerAware:)])
         [(CABackdropLayer*)m_layer.get() setWindowServerAware:NO];
 #endif
 
@@ -709,14 +709,26 @@ void PlatformCALayerCocoa::setMasksToBounds(bool value)
 
 bool PlatformCALayerCocoa::acceleratesDrawing() const
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     return [m_layer drawsAsynchronously];
+#else
+    // -[CALayer drawsAsynchronously] is a 10.8+ SPI; absent on 10.6.
+    return false;
+#endif
 }
 
 void PlatformCALayerCocoa::setAcceleratesDrawing(bool acceleratesDrawing)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     BEGIN_BLOCK_OBJC_EXCEPTIONS
     [m_layer setDrawsAsynchronously:acceleratesDrawing];
     END_BLOCK_OBJC_EXCEPTIONS
+#else
+    // -[CALayer setDrawsAsynchronously:] is a 10.8+ SPI; on 10.6 CALayer does not
+    // respond to it, so sending it raises "unrecognized selector" and terminates
+    // the app. Async/accelerated layer drawing is simply unavailable on 10.6.
+    UNUSED_PARAM(acceleratesDrawing);
+#endif
 }
 
 bool PlatformCALayerCocoa::wantsDeepColorBackingStore() const
@@ -907,7 +919,11 @@ void PlatformCALayerCocoa::setTimeOffset(CFTimeInterval value)
 
 float PlatformCALayerCocoa::contentsScale() const
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     return [m_layer contentsScale];
+#else
+    return 1; /* [leopard] CALayer.contentsScale is 10.7+; no HiDPI on 10.6 */
+#endif
 }
 
 void PlatformCALayerCocoa::setContentsScale(float value)
@@ -1181,7 +1197,7 @@ void PlatformCALayer::drawLayerContents(GraphicsContext& graphicsContext, WebCor
 
         // Set up an NSGraphicsContext for the context, so that parts of AppKit that rely on
         // the current NSGraphicsContext (e.g. NSCell drawing) get the right one.
-        NSGraphicsContext* layerContext = [NSGraphicsContext graphicsContextWithCGContext:context flipped:YES];
+        NSGraphicsContext* layerContext = [NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:YES];
         [NSGraphicsContext setCurrentContext:layerContext];
 #endif
     }

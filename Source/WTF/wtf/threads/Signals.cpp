@@ -104,8 +104,12 @@ void startMachExceptionHandlerThread()
         kr = mach_port_insert_right(mach_task_self(), handlers.exceptionPort, handlers.exceptionPort, MACH_MSG_TYPE_MAKE_SEND);
         RELEASE_ASSERT(kr == KERN_SUCCESS);
 
+        // [leopard] LEOPARD_DISPATCH_QUEUE: 10.6's libdispatch crashes in _dispatch_retain
+        // when DISPATCH_TARGET_QUEUE_DEFAULT (NULL) is passed to dispatch_source_create.
+        // Use an explicit global queue, which 10.6 supports.
+        dispatch_queue_t machHandlerQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
         dispatch_source_t source = dispatch_source_create(
-            DISPATCH_SOURCE_TYPE_MACH_RECV, handlers.exceptionPort, 0, DISPATCH_TARGET_QUEUE_DEFAULT);
+            DISPATCH_SOURCE_TYPE_MACH_RECV, handlers.exceptionPort, 0, machHandlerQueue);
         RELEASE_ASSERT(source);
 
         dispatch_source_set_event_handler(source, ^{

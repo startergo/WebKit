@@ -26,12 +26,18 @@
 #include "config.h"
 #include "Gunzip.h"
 
-#include <compression.h>
+// [leopard] 10.6 lacks libcompression; gunzip's only caller (WebGPU/WHLSL) is disabled.
+#define LEOPARD_NO_COMPRESSION 1
 
 namespace PAL {
 
 Vector<LChar> gunzip(const unsigned char* data, size_t length)
 {
+#if LEOPARD_NO_COMPRESSION  // LEOPARD_GUNZIP_WRAPPED
+    UNUSED_PARAM(data);
+    UNUSED_PARAM(length);
+    return { };
+#else
     Vector<LChar> result;
 
     // Parse the gzip header.
@@ -85,6 +91,6 @@ Vector<LChar> gunzip(const unsigned char* data, size_t length)
             return { };
         }
     } while (true);
+#endif  // LEOPARD_NO_COMPRESSION
 }
-
 } // namespace WTF

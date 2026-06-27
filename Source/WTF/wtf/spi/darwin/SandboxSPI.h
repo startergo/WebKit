@@ -32,12 +32,24 @@
 #if USE(APPLE_INTERNAL_SDK)
 #import <sandbox/private.h>
 #else
+// [leopard] LEOPARD_SANDBOX_FILTER: 10.6's <sandbox.h> already defines
+// enum sandbox_filter_type (SANDBOX_FILTER_NONE/PATH/GLOBAL_NAME/LOCAL_NAME).
+// Do not redefine the enum; only add the extra enumerators WebKit needs as
+// separate constants, and define the macro.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 enum sandbox_filter_type {
     SANDBOX_FILTER_NONE,
     SANDBOX_FILTER_GLOBAL_NAME = 2,
     SANDBOX_FILTER_XPC_SERVICE_NAME = 12,
     SANDBOX_FILTER_IOKIT_CONNECTION,
 };
+#else
+// 10.6: enum already in <sandbox.h>; provide only the extra values WebKit references.
+enum {
+    SANDBOX_FILTER_XPC_SERVICE_NAME = 12,
+    SANDBOX_FILTER_IOKIT_CONNECTION = 13,
+};
+#endif
 
 #define SANDBOX_NAMED_EXTERNAL 0x0003
 #endif
@@ -58,7 +70,10 @@ typedef struct {
 
 extern const char *const APP_SANDBOX_READ;
 extern const char *const APP_SANDBOX_READ_WRITE;
+// [leopard] LEOPARD_SANDBOX_CHECK_GUARD: 10.6 sandbox.h already declares sandbox_check.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 extern const enum sandbox_filter_type SANDBOX_CHECK_NO_REPORT;
+#endif
 
 extern const uint32_t SANDBOX_EXTENSION_NO_REPORT;
 
@@ -67,7 +82,9 @@ char *sandbox_extension_issue_generic(const char *extension_class, uint32_t flag
 char *sandbox_extension_issue_file_to_process(const char *extension_class, const char *path, uint32_t flags, audit_token_t);
 char *sandbox_extension_issue_mach_to_process(const char *extension_class, const char *name, uint32_t flags, audit_token_t);
 char *sandbox_extension_issue_mach(const char *extension_class, const char *name, uint32_t flags);
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 int sandbox_check(pid_t, const char *operation, enum sandbox_filter_type, ...);
+#endif
 int sandbox_check_by_audit_token(audit_token_t, const char *operation, enum sandbox_filter_type, ...);
 int sandbox_container_path_for_pid(pid_t, char *buffer, size_t bufsize);
 int sandbox_extension_release(int64_t extension_handle);

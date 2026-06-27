@@ -39,7 +39,11 @@ bool WTFSignpostsEnabled()
         // Signposts may contain sensitive info that we don't want to emit to logd except when
         // profiling (such as URLs). To guard against accidental leakage, only enable them on Apple
         // internal builds when an environment variable is set.
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+        if (false) // [leopard] os_variant_allows_internal_security_policies is a newer darwin SPI; not internal on 10.6
+#else
         if (os_variant_allows_internal_security_policies("com.apple.WebKit"))
+#endif
             enabled = !strcmp(getenv("WEBKIT_SIGNPOSTS_ENABLED") ?: "0", "1");
     });
 

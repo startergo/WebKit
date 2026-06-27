@@ -86,6 +86,15 @@ endif ()
 # since the later one just resolves to the host processor on Windows.
 if (MSVC_CXX_ARCHITECTURE_ID)
     string(TOLOWER ${MSVC_CXX_ARCHITECTURE_ID} LOWERCASE_CMAKE_SYSTEM_PROCESSOR)
+elseif (APPLE AND CMAKE_OSX_ARCHITECTURES)
+    # [leopard-webkit-build] On Apple cross-builds CMake's platform init overwrites
+    # CMAKE_SYSTEM_PROCESSOR with the *host* arch (e.g. arm64 on Apple Silicon),
+    # which corrupts the WTF_CPU detection below and the JSC LLInt backend selection
+    # that depends on it (it generated an ARMv7_TRADITIONAL LLInt for an x86_64 target).
+    # CMAKE_OSX_ARCHITECTURES carries the real target arch, so prefer it here.
+    list(GET CMAKE_OSX_ARCHITECTURES 0 _WEBKIT_OSX_FIRST_ARCH)
+    string(TOLOWER "${_WEBKIT_OSX_FIRST_ARCH}" LOWERCASE_CMAKE_SYSTEM_PROCESSOR)
+    unset(_WEBKIT_OSX_FIRST_ARCH)
 else ()
     string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_SYSTEM_PROCESSOR)
 endif ()

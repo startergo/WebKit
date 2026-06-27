@@ -48,6 +48,7 @@ The primary use for a JSManagedValue is to store a JSValue in an Objective-C
 or Swift object that is exported to JavaScript. It is incorrect to store a JSValue
 in an object that is exported to JavaScript, since doing so creates a retain cycle.
 */ 
+__attribute__((visibility("default")))
 NS_CLASS_AVAILABLE(10_9, 7_0)
 @interface JSManagedValue : NSObject
 

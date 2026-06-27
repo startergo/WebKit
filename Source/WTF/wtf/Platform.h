@@ -160,9 +160,9 @@
 /* USE_ANGLE=1 uses ANGLE for the WebGL backend.
    It replaces USE_OPENGL, USE_OPENGL_ES and USE_EGL. */
 #if PLATFORM(MAC) || (PLATFORM(MACCATALYST) && __has_include(<OpenGL/OpenGL.h>))
-#define USE_OPENGL 0
+#define USE_OPENGL 1
 #define USE_OPENGL_ES 0
-#define USE_ANGLE 1
+#define USE_ANGLE 0
 #else
 #define USE_OPENGL 0
 #define USE_OPENGL_ES 0
@@ -172,7 +172,7 @@
 #define GL_SILENCE_DEPRECATION 1
 #endif
 
-#if USE(OPENGL) && !defined(HAVE_OPENGL_4)
+#if USE(OPENGL) && !defined(HAVE_OPENGL_4) && !(PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070)
 #define HAVE_OPENGL_4 1
 #endif
 

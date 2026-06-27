@@ -54,8 +54,11 @@
 
 #else
 
+// [leopard] LEOPARD_AVF_PLAYER: AVFoundation player headers are 10.7+. Skip on 10.6.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 #import <AVFoundation/AVPlayer.h>
 #import <AVFoundation/AVPlayerItem.h>
+#endif
 
 NS_ASSUME_NONNULL_BEGIN
 @interface AVPlayerItem ()

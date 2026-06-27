@@ -63,7 +63,14 @@ static RGBA32 makeRGBAFromNSColor(NSColor *color)
     CGFloat alpha;
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    NSColor *rgbColor = [color colorUsingColorSpace:NSColorSpace.deviceRGBColorSpace];
+    // [leopard] On 10.6, converting to deviceRGBColorSpace yields an "NSCustomColorSpace
+    // Device RGB" color whose -getRed:green:blue:alpha: throws ("need to first convert
+    // colorspace"). Convert to sRGB instead (matches 605), which -getRed: accepts on 10.6.
+    // [leopard] On 10.6, -colorUsingColorSpace: (NSColorSpace*) yields an NSCustomColorSpace
+    // color whose -getRed:green:blue:alpha: throws (even for sRGB). The classic string-based
+    // -colorUsingColorSpaceName:NSCalibratedRGBColorSpace returns a color that -getRed: accepts
+    // on 10.6 (matches 605).
+    NSColor *rgbColor = [color colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
     if (!rgbColor) {
         // The color space conversion above can fail if the NSColor is in the NSPatternColorSpace.
         // These colors are actually a repeating pattern, not just a solid color. To workaround

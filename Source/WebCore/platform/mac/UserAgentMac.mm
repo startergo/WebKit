@@ -34,10 +34,13 @@ namespace WebCore {
 
 String standardUserAgentWithApplicationName(const String& applicationName, const String&, UserAgentType)
 {
-    String osVersion = systemMarketingVersionForUserAgentString();
-    String appNameSuffix = applicationName.isEmpty() ? "" : makeString(" ", applicationName);
-
-    return makeString("Mozilla/5.0 (Macintosh; Intel Mac OS X ", osVersion, ") AppleWebKit/605.1.15 (KHTML, like Gecko)", appNameSuffix);
+    // Snow Leopard port: emit the genuine Safari 14 / macOS Big Sur user agent for
+    // this WebKit generation. The 10.6 host app (Safari 5.0.5) would otherwise append
+    // its own "Version/5.0.5 Safari/533.21.1", which modern sites reject. The OS token
+    // 10_15_7 and the frozen AppleWebKit/605.1.15 build match exactly what real Safari
+    // 14 reported, so this is the authentic string for the engine, not a fabrication.
+    UNUSED_PARAM(applicationName);
+    return "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.1 Safari/605.1.15"_str;
 }
 
 } // namespace WebCore

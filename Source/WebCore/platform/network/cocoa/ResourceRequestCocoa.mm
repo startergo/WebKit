@@ -24,6 +24,7 @@
  */
 
 #import "config.h"
+#import <wtf/cocoa/VectorCocoa.h>
 #import "ResourceRequest.h"
 
 #if PLATFORM(COCOA)
@@ -190,10 +191,23 @@ void ResourceRequest::doUpdatePlatformRequest()
     [nsRequest _setProperty:m_isTopSite ? @YES : @NO forKey:@"_kCFHTTPCookiePolicyPropertyIsTopLevelNavigation"];
 
     // Cannot just use setAllHTTPHeaderFields here, because it does not remove headers.
-    for (NSString *oldHeaderName in [nsRequest allHTTPHeaderFields])
+    // [leopard] On 10.6, -[NSMutableURLRequest allHTTPHeaderFields] returns the internal
+    // mutable dictionary, so mutating it via setValue:nil:forHTTPHeaderField: inside a
+    // fast-enumeration over it throws "mutated while being enumerated" (hangs page load).
+    // Iterate over a snapshot of the keys (a separate array) to decouple enumeration
+    // from the mutation.
+    for (NSString *oldHeaderName in [[nsRequest allHTTPHeaderFields] allKeys])
         [nsRequest setValue:nil forHTTPHeaderField:oldHeaderName];
     for (const auto& header : httpHeaderFields())
         [nsRequest setValue:header.value forHTTPHeaderField:header.key];
+
+    // [leopard] 10.6's HTTP stack cannot decode Brotli (Content-Encoding: br). Modern
+    // CDNs (e.g. github.githubassets.com) serve br when it is advertised, and the
+    // undecodable body comes back empty -> CSS/JS silently fail to load (pages render
+    // unstyled with no scripts). Force Accept-Encoding to gzip/deflate AFTER the header
+    // copy above (which would otherwise restore a br-containing value), so the server
+    // sends a 10.6-decodable encoding.
+    [nsRequest setValue:@"gzip, deflate" forHTTPHeaderField:@"Accept-Encoding"];
 
     [nsRequest setContentDispositionEncodingFallbackArray:createNSArray(m_responseContentDispositionEncodingFallbackArray, [] (auto& name) -> NSNumber * {
         auto encoding = CFStringConvertEncodingToNSStringEncoding(CFStringConvertIANACharSetNameToEncoding(name.createCFString().get()));

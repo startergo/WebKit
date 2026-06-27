@@ -26,6 +26,14 @@
 #import "config.h"
 #import "ThemeMac.h"
 
+#if defined(LEOPARD_WEBKIT)
+// [leopard] The 10.6 SDK's NSWorkspace.h does not declare accessibilityDisplayShouldReduceMotion;
+// declare it so the respondsToSelector:-guarded call below typechecks (it returns BOOL).
+@interface NSWorkspace (SLReduceMotionCompat)
+- (BOOL)accessibilityDisplayShouldReduceMotion;
+@end
+#endif
+
 #if PLATFORM(MAC)
 
 #import "AXObjectCache.h"
@@ -210,7 +218,13 @@ static void updateStates(NSCell* cell, const ControlStates& controlStates, bool 
     bool oldPressed = [cell isHighlighted];
     bool pressed = states & ControlStates::PressedState;
     if (pressed != oldPressed) {
-        [(NSButtonCell*)cell _setHighlighted:pressed animated:useAnimation];
+        // [leopard] -[NSButtonCell _setHighlighted:animated:] is 10.7+; unrecognized on
+        // 10.6 -> crash when a toggle button changes pressed state. Fall back to the
+        // public -setHighlighted: (10.0+); 10.6 has no control-state animation.
+        if ([(NSButtonCell*)cell respondsToSelector:@selector(_setHighlighted:animated:)])
+            [(NSButtonCell*)cell _setHighlighted:pressed animated:useAnimation];
+        else
+            [(NSButtonCell*)cell setHighlighted:pressed];
     }
     
     // Enabled state
@@ -226,12 +240,23 @@ static void updateStates(NSCell* cell, const ControlStates& controlStates, bool 
     bool oldChecked = [cell state] == NSControlStateValueOn;
     if (oldIndeterminate != indeterminate || checked != oldChecked) {
         NSControlStateValue newState = indeterminate ? NSControlStateValueMixed : (checked ? NSControlStateValueOn : NSControlStateValueOff);
-        [(NSButtonCell*)cell _setState:newState animated:useAnimation];
+        // [leopard] -[NSButtonCell _setState:animated:] is 10.7+ (unrecognized on 10.6,
+        // crashes during form-control theme painting). Fall back to public -setState:
+        // (10.0+); 10.6 has no control-state animation anyway.
+        if ([(NSButtonCell*)cell respondsToSelector:@selector(_setState:animated:)])
+            [(NSButtonCell*)cell _setState:newState animated:useAnimation];
+        else
+            [(NSButtonCell*)cell setState:newState];
     }
 
     // Presenting state
     if (states & ControlStates::PresentingState)
-        [(NSButtonCell*)cell _setHighlighted:YES animated:NO];
+        // [leopard] -[NSButtonCell _setHighlighted:animated:] is 10.7+; fall back to
+        // public -setHighlighted: (10.0+) on 10.6.
+        if ([(NSButtonCell*)cell respondsToSelector:@selector(_setHighlighted:animated:)])
+            [(NSButtonCell*)cell _setHighlighted:YES animated:NO];
+        else
+            [(NSButtonCell*)cell setHighlighted:YES];
 
     // Window inactive state does not need to be checked explicitly, since we paint parented to 
     // a view in a window whose key state can be detected.
@@ -407,7 +432,10 @@ static bool drawCellFocusRingWithFrameAtTime(NSCell *cell, NSRect cellFrame, NSV
     CGContextSetStyle(cgContext, style.get());
 
     CGContextBeginTransparencyLayerWithRect(cgContext, NSRectToCGRect(cellFrame), nullptr);
-    [cell drawFocusRingMaskWithFrame:cellFrame inView:controlView];
+    if ([cell respondsToSelector:@selector(drawFocusRingMaskWithFrame:inView:)])
+        [cell drawFocusRingMaskWithFrame:cellFrame inView:controlView];
+    else
+        CGContextFillRect(cgContext, NSRectToCGRect(cellFrame));
     CGContextEndTransparencyLayer(cgContext);
 
     return needsRepaint;
@@ -467,7 +495,14 @@ static void paintToggleButton(ControlPart buttonType, ControlStates& controlStat
     bool useImageBuffer = pageScaleFactor != 1.0f || zoomFactor != 1.0f;
     bool isCellFocused = controlStates.states() & ControlStates::FocusState;
 
-    if ([toggleButtonCell _stateAnimationRunning]) {
+    // [leopard] -[NSButtonCell _stateAnimationRunning] and
+    // -[NSButtonCell _renderCurrentAnimationFrameInContext:atLocation:] are 10.7+ SPIs.
+    // On 10.6 they are absent (unrecognized selector -> crash when painting toggle
+    // buttons). 10.6 has no button state animations, so treat the animation as never
+    // running and always take the normal (non-animated) cell-draw path.
+    BOOL stateAnimationRunning = [toggleButtonCell respondsToSelector:@selector(_stateAnimationRunning)] && [toggleButtonCell _stateAnimationRunning];
+
+    if (stateAnimationRunning) {
         context.translate(inflatedRect.location());
         context.scale(FloatSize(1, -1));
         context.translate(0, -inflatedRect.height());
@@ -480,7 +515,7 @@ static void paintToggleButton(ControlPart buttonType, ControlStates& controlStat
 
     [toggleButtonCell setControlView:nil];
 
-    needsRepaint |= [toggleButtonCell _stateAnimationRunning];
+    needsRepaint |= ([toggleButtonCell respondsToSelector:@selector(_stateAnimationRunning)] && [toggleButtonCell _stateAnimationRunning]);
     controlStates.setNeedsRepaint(needsRepaint);
     if (needsRepaint)
         controlStates.setPlatformControl(toggleButtonCell.get());
@@ -701,7 +736,12 @@ NSView *ThemeMac::ensuredView(ScrollView* scrollView, const ControlStates& contr
     // Use a fake view.
     static WebCoreThemeView *themeView = [[WebCoreThemeView alloc] init];
     [themeView setFrameSize:NSSizeFromCGSize(scrollView->totalContentsSize())];
-    [themeView setAppearance:[NSAppearance currentAppearance]];
+    // [leopard] NSAppearance / -setAppearance: / +currentAppearance are 10.9+.
+    // On 10.6 NSAppearance does not exist; touching +[NSAppearance currentAppearance]
+    // traps during class init (SIGTRAP in _class_initialize). 10.6 has only the
+    // default Aqua appearance, so skip setting it.
+    if ([themeView respondsToSelector:@selector(setAppearance:)] && NSClassFromString(@"NSAppearance"))
+        [themeView setAppearance:[NSAppearance currentAppearance]];
 
     themeWindowHasKeyAppearance = !(controlStates.states() & ControlStates::WindowInactiveState);
 
@@ -994,7 +1034,16 @@ void ThemeMac::paint(ControlPart part, ControlStates& states, GraphicsContext& c
 
 bool ThemeMac::userPrefersReducedMotion() const
 {
+#if defined(LEOPARD_WEBKIT)
+    // [leopard] -[NSWorkspace accessibilityDisplayShouldReduceMotion] is 10.9+ (unrecognized
+    // selector on 10.6). No reduced-motion preference exists on 10.6; report false.
+    NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
+    if (![workspace respondsToSelector:@selector(accessibilityDisplayShouldReduceMotion)])
+        return false;
+    return [workspace accessibilityDisplayShouldReduceMotion];
+#else
     return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
+#endif
 }
 
 }

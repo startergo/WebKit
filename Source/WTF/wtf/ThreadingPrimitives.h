@@ -71,7 +71,11 @@ class Mutex final {
     WTF_MAKE_NONCOPYABLE(Mutex);
     WTF_MAKE_FAST_ALLOCATED;
 public:
+#if defined(LEOPARD_WEBKIT)
+    WTF_EXPORT_PRIVATE Mutex();
+#else
     constexpr Mutex() = default;
+#endif
     WTF_EXPORT_PRIVATE ~Mutex();
 
     WTF_EXPORT_PRIVATE void lock();
@@ -94,12 +98,19 @@ class ThreadCondition final {
     WTF_MAKE_NONCOPYABLE(ThreadCondition);
     WTF_MAKE_FAST_ALLOCATED;
 public:
+#if defined(LEOPARD_WEBKIT)
+    WTF_EXPORT_PRIVATE ThreadCondition();
+#else
     constexpr ThreadCondition() = default;
+#endif
     WTF_EXPORT_PRIVATE ~ThreadCondition();
     
     WTF_EXPORT_PRIVATE void wait(Mutex& mutex);
     // Returns true if the condition was signaled before absoluteTime, false if the absoluteTime was reached or is in the past.
     WTF_EXPORT_PRIVATE bool timedWait(Mutex&, WallTime absoluteTime);
+#if defined(LEOPARD_WEBKIT)
+    WTF_EXPORT_PRIVATE bool timedWait(Mutex&, double absoluteTime);
+#endif
     WTF_EXPORT_PRIVATE void signal();
     WTF_EXPORT_PRIVATE void broadcast();
     

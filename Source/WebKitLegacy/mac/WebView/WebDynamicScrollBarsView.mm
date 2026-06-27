@@ -535,8 +535,14 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
     BOOL isContinuous;
     getWheelEventDeltas(event, deltaX, deltaY, isContinuous);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+    // [leopard-webkit-build] NSEvent -momentumPhase + NSEventPhase enum are 10.7+
+    // (momentum scrolling). On 10.6 there's no momentum scroll tracking.
     NSEventPhase momentumPhase = [event momentumPhase];
     BOOL isLatchingEvent = momentumPhase & NSEventPhaseBegan || momentumPhase & NSEventPhaseStationary;
+#else
+    BOOL isLatchingEvent = NO;
+#endif
 
     if (fabsf(deltaY) > fabsf(deltaX)) {
         if (![self allowsVerticalScrolling]) {

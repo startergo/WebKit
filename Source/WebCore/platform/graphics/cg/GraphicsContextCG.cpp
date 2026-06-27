@@ -98,8 +98,9 @@ CGColorSpaceRef linearRGBColorSpaceRef()
     static CGColorSpaceRef linearRGBColorSpace;
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
-#if PLATFORM(WIN)
+#if PLATFORM(WIN) || defined(LEOPARD_WEBKIT)
         // FIXME: Windows should be able to use linear sRGB, this is tracked by http://webkit.org/b/80000.
+        // [leopard] kCGColorSpaceLinearSRGB is 10.11+; fall back to sRGB on 10.6.
         linearRGBColorSpace = sRGBColorSpaceRef();
 #else
         linearRGBColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceLinearSRGB);
@@ -114,7 +115,7 @@ CGColorSpaceRef extendedSRGBColorSpaceRef()
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
         CGColorSpaceRef colorSpace = NULL;
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) && !defined(LEOPARD_WEBKIT)
         colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
 #endif
         // If there is no support for extended sRGB, fall back to sRGB.
@@ -131,9 +132,10 @@ CGColorSpaceRef displayP3ColorSpaceRef()
     static CGColorSpaceRef displayP3ColorSpace;
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) && !defined(LEOPARD_WEBKIT)
         displayP3ColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
 #else
+        // [leopard] kCGColorSpaceDisplayP3 is 10.11+; fall back to sRGB on 10.6.
         displayP3ColorSpace = sRGBColorSpaceRef();
 #endif
     });
@@ -1200,8 +1202,15 @@ static void applyShadowOffsetWorkaroundIfNeeded(const GraphicsContext& context, 
     if (context.isAcceleratedContext())
         return;
 
+#if defined(LEOPARD_WEBKIT)
+    // [leopard] CGContextDrawsWithCorrectShadowOffsets is not an exported symbol in 10.6's
+    // CoreGraphics (SIGBUS at the unbound stub when painting CSS box-shadows). 10.6 predates the
+    // correct-offset behavior, so fall through and always apply the offset workaround below.
+    UNUSED_PARAM(context);
+#else
     if (CGContextDrawsWithCorrectShadowOffsets(context.platformContext()))
         return;
+#endif
 
     // Work around <rdar://problem/5539388> by ensuring that the offsets will get truncated
     // to the desired integer. Also see: <rdar://problem/10056277>

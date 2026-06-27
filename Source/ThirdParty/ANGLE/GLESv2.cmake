@@ -259,12 +259,8 @@ set(libangle_headers
     "src/libANGLE/MemoryObject.h"
     "src/libANGLE/MemoryProgramCache.h"
     "src/libANGLE/Observer.h"
-    "src/libANGLE/Overlay.cpp"
     "src/libANGLE/Overlay.h"
-    "src/libANGLE/OverlayWidgets.cpp"
     "src/libANGLE/OverlayWidgets.h"
-    "src/libANGLE/Overlay_autogen.cpp"
-    "src/libANGLE/Overlay_font_autogen.cpp"
     "src/libANGLE/Overlay_font_autogen.h"
     "src/libANGLE/Program.h"
     "src/libANGLE/ProgramExecutable.h"
@@ -377,6 +373,10 @@ set(libangle_headers
 
 
 set(libangle_sources
+    "src/libANGLE/Overlay.cpp"
+    "src/libANGLE/OverlayWidgets.cpp"
+    "src/libANGLE/Overlay_autogen.cpp"
+    "src/libANGLE/Overlay_font_autogen.cpp"
     "src/libANGLE/AttributeMap.cpp"
     "src/libANGLE/BlobCache.cpp"
     "src/libANGLE/Buffer.cpp"

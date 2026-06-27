@@ -61,8 +61,10 @@
 - (CGLPixelFormatObj)copyCGLPixelFormatForDisplayMask:(uint32_t)mask
 {
     CGLPixelFormatAttribute attribs[] = {
-        kCGLPFADisplayMask, static_cast<CGLPixelFormatAttribute>(mask), kCGLPFAOpenGLProfile,
-        static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_3_2_Core),
+        kCGLPFADisplayMask, static_cast<CGLPixelFormatAttribute>(mask),
+        #ifdef kCGLPFAOpenGLProfile
+        kCGLPFAOpenGLProfile, static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_3_2_Core),
+        #endif
         static_cast<CGLPixelFormatAttribute>(0)};
 
     CGLPixelFormatObj pixelFormat = nullptr;
@@ -302,12 +304,12 @@ void WindowSurfaceCGL::setSwapInterval(EGLint interval)
 
 EGLint WindowSurfaceCGL::getWidth() const
 {
-    return static_cast<EGLint>(CGRectGetWidth([mLayer frame]) * [mLayer contentsScale]);
+    return static_cast<EGLint>(CGRectGetWidth([mLayer frame]) * 1.0 /*[mLayer contentsScale] is 10.7+*/);
 }
 
 EGLint WindowSurfaceCGL::getHeight() const
 {
-    return static_cast<EGLint>(CGRectGetHeight([mLayer frame]) * [mLayer contentsScale]);
+    return static_cast<EGLint>(CGRectGetHeight([mLayer frame]) * 1.0 /*[mLayer contentsScale] is 10.7+*/);
 }
 
 EGLint WindowSurfaceCGL::isPostSubBufferSupported() const

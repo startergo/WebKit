@@ -141,6 +141,8 @@ static inline void appendTrueTypeFeature(CFMutableArrayRef features, const FontF
 
 static inline void appendOpenTypeFeature(CFMutableArrayRef features, const FontFeature& feature)
 {
+    if (!kCTFontOpenTypeFeatureTag || !kCTFontOpenTypeFeatureValue)
+        return;
     auto featureKey = adoptCF(CFStringCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(feature.tag().data()), feature.tag().size() * sizeof(FontTag::value_type), kCFStringEncodingASCII, false));
     int rawFeatureValue = feature.value();
     auto featureValue = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &rawFeatureValue));
@@ -661,7 +663,8 @@ RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, const FontDescr
             if (fontType.openTypeShaping)
                 appendOpenTypeFeature(featureArray.get(), feature);
         }
-        CFDictionaryAddValue(attributes.get(), kCTFontFeatureSettingsAttribute, featureArray.get());
+        if (CFArrayGetCount(featureArray.get()))
+            CFDictionaryAddValue(attributes.get(), kCTFontFeatureSettingsAttribute, featureArray.get());
     }
 
 #if ENABLE(VARIATION_FONTS)
@@ -694,7 +697,10 @@ RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, const FontDescr
     addAttributesForInstalledFonts(attributes.get(), fontDescription.shouldAllowUserInstalledFonts());
 
     auto descriptor = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
-    return adoptCF(CTFontCreateCopyWithAttributes(originalFont, CTFontGetSize(originalFont), nullptr, descriptor.get()));
+    auto modifiedFont = adoptCF(CTFontCreateCopyWithAttributes(originalFont, CTFontGetSize(originalFont), nullptr, descriptor.get()));
+    if (!modifiedFont)
+        return originalFont;
+    return modifiedFont;
 }
 
 RefPtr<Font> FontCache::similarFont(const FontDescription& description, const AtomString& family)

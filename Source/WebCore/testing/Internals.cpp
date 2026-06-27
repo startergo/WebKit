@@ -547,7 +547,9 @@ void Internals::resetToConsistentState(Page& page)
     page.setMockMediaPlaybackTargetPickerState(emptyString(), MediaPlaybackTargetContext::Unknown);
 #endif
 
+#if ENABLE(VIDEO)
     MediaResourceLoader::recordResponsesForTesting();
+#endif
 
     page.setShowAllPlugins(false);
     page.setLowPowerModeEnabledOverrideForTesting(WTF::nullopt);
@@ -4674,10 +4676,14 @@ ExceptionOr<String> Internals::pathStringWithShrinkWrappedRects(const Vector<dou
 }
 
 
+#if ENABLE(VIDEO)
+#if ENABLE(VIDEO)
 String Internals::getCurrentMediaControlsStatusForElement(HTMLMediaElement& mediaElement)
 {
     return mediaElement.getCurrentMediaControlsStatus();
 }
+#endif
+#endif
 
 #if !PLATFORM(COCOA)
 

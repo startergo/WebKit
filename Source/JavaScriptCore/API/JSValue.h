@@ -44,6 +44,7 @@
  JSValue to a method or property of a JSValue or JSContext originating from a
  different JSVirtualMachine. Doing so will raise an Objective-C exception.
 */
+__attribute__((visibility("default")))
 NS_CLASS_AVAILABLE(10_9, 7_0)
 @interface JSValue : NSObject
 

@@ -36,10 +36,8 @@
 
 #endif // ENABLE(APPLE_PAY)
 
-#if ENABLE(VIDEO)
 #import "LocalizedStrings.h"
 #import <wtf/BlockObjCExceptions.h>
-#endif
 
 namespace WebCore {
 
@@ -127,12 +125,18 @@ bool RenderThemeCocoa::paintApplePayButton(const RenderObject& renderer, const P
 
 #endif // ENABLE(APPLE_PAY)
 
+#if ENABLE(VIDEO)
 String RenderThemeCocoa::mediaControlsFormattedStringForDuration(const double durationInSeconds)
 {
     if (!std::isfinite(durationInSeconds))
         return WEB_UI_STRING("indefinite time", "accessibility help text for an indefinite media controller time value");
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    // [leopard-webkit-build] NSDateComponentsFormatter properties (unitsStyle,
+    // allowedUnits, formattingContext, maximumUnitCount) + NSFormattingContext are
+    // 10.8+/10.10+. On 10.6 the duration formatter is unconfigured → media controls
+    // show "indefinite" (line 119) instead of formatted time. Acceptable on 10.6.
     if (!m_durationFormatter) {
         m_durationFormatter = adoptNS([NSDateComponentsFormatter new]);
         m_durationFormatter.get().unitsStyle = NSDateComponentsFormatterUnitsStyleFull;
@@ -141,7 +145,14 @@ String RenderThemeCocoa::mediaControlsFormattedStringForDuration(const double du
         m_durationFormatter.get().maximumUnitCount = 2;
     }
     return [m_durationFormatter.get() stringFromTimeInterval:durationInSeconds];
+#else
+    // [leopard-webkit-build] LEOPARD_DURATION_ENDIF: NSDateComponentsFormatter is 10.10+.
+    // On 10.6 return a simple seconds string (media controls are disabled anyway).
+    UNUSED_PARAM(durationInSeconds);
+    return WEB_UI_STRING("indefinite time", "accessibility help text for an indefinite media controller time value");
+#endif
     END_BLOCK_OBJC_EXCEPTIONS;
 }
+#endif // ENABLE(VIDEO) [leopard]
 
 }

@@ -6,7 +6,6 @@ find_library(AUDIOUNIT_LIBRARY AudioUnit)
 find_library(CARBON_LIBRARY Carbon)
 find_library(CFNETWORK_LIBRARY CFNetwork)
 find_library(COCOA_LIBRARY Cocoa)
-find_library(COMPRESSION_LIBRARY Compression)
 find_library(COREAUDIO_LIBRARY CoreAudio)
 find_library(CORESERVICES_LIBRARY CoreServices)
 find_library(DISKARBITRATION_LIBRARY DiskArbitration)
@@ -22,6 +21,25 @@ find_library(XML2_LIBRARY XML2)
 find_package(Sqlite3 REQUIRED)
 find_package(ZLIB REQUIRED)
 
+# [leopard-webkit-build] 610 links the imported target LibXml2::LibXml2 but the Mac
+# port only does find_library(XML2_LIBRARY XML2), never creating the imported target.
+# The 10.6 SDK ships libxml2.2.dylib + headers, so define the target from the SDK.
+if (NOT TARGET LibXml2::LibXml2)
+    add_library(LibXml2::LibXml2 SHARED IMPORTED)
+    set_target_properties(LibXml2::LibXml2 PROPERTIES
+        IMPORTED_LOCATION "${CMAKE_OSX_SYSROOT}/usr/lib/libxml2.2.dylib"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_OSX_SYSROOT}/usr/include/libxml2")
+endif ()
+
+# [leopard-webkit-build] Same treatment for LibXslt::LibXslt — 610 links it but the
+# Mac port never creates the imported target. 10.6 SDK ships libxslt.1.dylib + headers.
+if (NOT TARGET LibXslt::LibXslt)
+    add_library(LibXslt::LibXslt SHARED IMPORTED)
+    set_target_properties(LibXslt::LibXslt PROPERTIES
+        IMPORTED_LOCATION "${CMAKE_OSX_SYSROOT}/usr/lib/libxslt.1.dylib"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_OSX_SYSROOT}/usr/include")
+endif ()
+
 list(APPEND WebCore_UNIFIED_SOURCE_LIST_FILES
     "SourcesCocoa.txt"
 )
@@ -34,13 +52,11 @@ list(APPEND WebCore_LIBRARIES
     ${CARBON_LIBRARY}
     ${CFNETWORK_LIBRARY}
     ${COCOA_LIBRARY}
-    ${COMPRESSION_LIBRARY}
     ${COREAUDIO_LIBRARY}
     ${CORESERVICES_LIBRARY}
     ${DISKARBITRATION_LIBRARY}
     ${IOKIT_LIBRARY}
     ${IOSURFACE_LIBRARY}
-    ${METAL_LIBRARY}
     ${OPENGL_LIBRARY}
     ${QUARTZ_LIBRARY}
     ${QUARTZCORE_LIBRARY}
@@ -131,11 +147,11 @@ list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/html/shadow/mac/imageControlsMac.css
-    ${WEBCORE_DIR}/Modules/plugins/QuickTimePluginReplacement.css
+    # [leopard] ${WEBCORE_DIR}/Modules/plugins/QuickTimePluginReplacement.css (QuickTime plugin excluded on 10.6)
 )
 
 set(WebCore_USER_AGENT_SCRIPTS
-    ${WEBCORE_DIR}/Modules/plugins/QuickTimePluginReplacement.js
+    # [leopard] ${WEBCORE_DIR}/Modules/plugins/QuickTimePluginReplacement.js
 )
 
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -156,11 +172,11 @@ list(APPEND WebCore_SOURCES
     dom/DataTransferMac.mm
     dom/SlotAssignment.cpp
 
-    editing/cocoa/AlternativeTextUIController.mm
+    # [leopard] removed (modern AppKit feature unavailable on 10.6): editing/cocoa/AlternativeTextUIController.mm
     editing/cocoa/AutofillElements.cpp
 
     editing/mac/EditorMac.mm
-    editing/mac/TextAlternativeWithRange.mm
+    # [leopard] removed (modern AppKit feature unavailable on 10.6): editing/mac/TextAlternativeWithRange.mm
     editing/mac/TextUndoInsertionMarkupMac.mm
 
     html/HTMLSlotElement.cpp
@@ -187,23 +203,24 @@ list(APPEND WebCore_SOURCES
     platform/ScrollableArea.cpp
 
     platform/audio/AudioSession.cpp
+    platform/leopard/LeopardMissingSymbols.mm
 
-    platform/audio/cocoa/WebAudioBufferList.cpp
+    # [leopard] removed: platform/audio/cocoa/WebAudioBufferList.cpp
 
-    platform/audio/mac/CAAudioStreamDescription.cpp
+    # [leopard] removed: platform/audio/mac/CAAudioStreamDescription.cpp
 
     platform/audio/mac/AudioBusMac.mm
     platform/audio/mac/AudioDestinationMac.cpp
     platform/audio/mac/AudioFileReaderMac.cpp
-    platform/audio/mac/AudioHardwareListenerMac.cpp
-    platform/audio/mac/AudioSessionMac.cpp
-    platform/audio/mac/CARingBuffer.cpp
+    # [leopard] removed: platform/audio/mac/AudioHardwareListenerMac.cpp
+    # [leopard] removed: platform/audio/mac/AudioSessionMac.mm
+    # [leopard] removed: platform/audio/mac/CARingBuffer.cpp
     platform/audio/mac/FFTFrameMac.cpp
 
     platform/cf/KeyedDecoderCF.cpp
     platform/cf/KeyedEncoderCF.cpp
     platform/cf/MainThreadSharedTimerCF.cpp
-    platform/cf/MediaAccessibilitySoftLink.cpp
+    # [leopard] removed: platform/cf/MediaAccessibilitySoftLink.cpp
     platform/cf/RunLoopObserver.cpp
     platform/cf/SharedBufferCF.cpp
 
@@ -225,10 +242,10 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/SystemVersion.mm
     platform/cocoa/TelephoneNumberDetectorCocoa.cpp
     platform/cocoa/ThemeCocoa.mm
-    platform/cocoa/VideoToolboxSoftLink.cpp
+    # [leopard] removed: platform/cocoa/VideoToolboxSoftLink.cpp
     platform/cocoa/WebCoreNSErrorExtras.mm
 
-    platform/encryptedmedia/clearkey/CDMClearKey.cpp
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/encryptedmedia/clearkey/CDMClearKey.cpp
 
     platform/gamepad/mac/HIDGamepad.cpp
     platform/gamepad/mac/HIDGamepadProvider.cpp
@@ -237,34 +254,34 @@ list(APPEND WebCore_SOURCES
     platform/graphics/DisplayRefreshMonitorManager.cpp
     platform/graphics/FourCC.cpp
 
-    platform/graphics/avfoundation/AVTrackPrivateAVFObjCImpl.mm
-    platform/graphics/avfoundation/AudioSourceProviderAVFObjC.mm
-    platform/graphics/avfoundation/CDMFairPlayStreaming.cpp
-    platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.mm
-    platform/graphics/avfoundation/InbandMetadataTextTrackPrivateAVF.cpp
-    platform/graphics/avfoundation/InbandTextTrackPrivateAVF.cpp
-    platform/graphics/avfoundation/MediaPlaybackTargetCocoa.mm
-    platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.cpp
-    platform/graphics/avfoundation/MediaSelectionGroupAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/AVTrackPrivateAVFObjCImpl.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/AudioSourceProviderAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/CDMFairPlayStreaming.cpp
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/InbandMetadataTextTrackPrivateAVF.cpp
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/InbandTextTrackPrivateAVF.cpp
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/MediaPlaybackTargetCocoa.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.cpp
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/MediaSelectionGroupAVFObjC.mm
 
-    platform/graphics/avfoundation/objc/AVAssetTrackUtilities.mm
-    platform/graphics/avfoundation/objc/AudioTrackPrivateAVFObjC.mm
-    platform/graphics/avfoundation/objc/AudioTrackPrivateMediaSourceAVFObjC.cpp
-    platform/graphics/avfoundation/objc/CDMInstanceFairPlayStreamingAVFObjC.mm
-    platform/graphics/avfoundation/objc/CDMSessionAVContentKeySession.mm
-    platform/graphics/avfoundation/objc/CDMSessionAVFoundationObjC.mm
-    platform/graphics/avfoundation/objc/CDMSessionAVStreamSession.mm
-    platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.mm
-    platform/graphics/avfoundation/objc/ImageDecoderAVFObjC.mm
-    platform/graphics/avfoundation/objc/InbandTextTrackPrivateAVFObjC.mm
-    platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm
-    platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm
-    platform/graphics/avfoundation/objc/MediaSampleAVFObjC.mm
-    platform/graphics/avfoundation/objc/MediaSourcePrivateAVFObjC.mm
-    platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm
-    platform/graphics/avfoundation/objc/VideoTrackPrivateAVFObjC.cpp
-    platform/graphics/avfoundation/objc/VideoTrackPrivateMediaSourceAVFObjC.mm
-    platform/graphics/avfoundation/objc/WebCoreAVFResourceLoader.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/AVAssetTrackUtilities.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/AudioTrackPrivateAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/AudioTrackPrivateMediaSourceAVFObjC.cpp
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/CDMInstanceFairPlayStreamingAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/CDMSessionAVContentKeySession.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/CDMSessionAVFoundationObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/CDMSessionAVStreamSession.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/CDMSessionMediaSourceAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/ImageDecoderAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/InbandTextTrackPrivateAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/MediaSampleAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/MediaSourcePrivateAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/VideoTrackPrivateAVFObjC.cpp
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/VideoTrackPrivateMediaSourceAVFObjC.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/avfoundation/objc/WebCoreAVFResourceLoader.mm
 
     platform/graphics/ca/GraphicsLayerCA.cpp
     platform/graphics/ca/LayerPool.cpp
@@ -320,14 +337,13 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cocoa/IntRectCocoa.mm
     platform/graphics/cocoa/WebActionDisablingCALayerDelegate.mm
     platform/graphics/cocoa/WebCoreCALayerExtras.mm
-    platform/graphics/cocoa/WebCoreDecompressionSession.mm
+    # [leopard] removed: platform/graphics/cocoa/WebCoreDecompressionSession.mm
     platform/graphics/cocoa/WebGLLayer.mm
-    platform/graphics/cocoa/WebGPULayer.mm
 
-    platform/graphics/cv/ImageRotationSessionVT.mm
-    platform/graphics/cv/PixelBufferConformerCV.cpp
-    platform/graphics/cv/TextureCacheCV.mm
-    platform/graphics/cv/VideoTextureCopierCV.cpp
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/cv/ImageRotationSessionVT.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/cv/PixelBufferConformerCV.cpp
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/cv/TextureCacheCV.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/graphics/cv/VideoTextureCopierCV.cpp
 
     platform/graphics/gpu/Texture.cpp
     platform/graphics/gpu/TilingData.cpp
@@ -359,8 +375,6 @@ list(APPEND WebCore_SOURCES
 
     platform/mac/BlacklistUpdater.mm
     platform/mac/CursorMac.mm
-    platform/mac/DragDataMac.mm
-    platform/mac/DragImageMac.mm
     platform/mac/KeyEventMac.mm
     platform/mac/LocalCurrentGraphicsContextMac.mm
     platform/mac/LoggingMac.mm
@@ -378,6 +392,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/RemoteCommandListenerMac.mm
     platform/mac/SSLKeyGeneratorMac.mm
     platform/mac/ScrollAnimatorMac.mm
+    platform/mac/WebCoreView.m  # [leopard] base NSView/NSScrollView _webcore_effectiveFirstResponder categories (was missing -> focus crash)
     platform/mac/ScrollViewMac.mm
     platform/mac/ScrollbarThemeMac.mm
     platform/mac/SerializedPlatformDataCueMac.mm
@@ -387,7 +402,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/ThreadCheck.mm
     platform/mac/UserActivityMac.mm
     platform/mac/ValidationBubbleMac.mm
-    platform/mac/WebCoreFullScreenPlaceholderView.mm
+    # [leopard] removed (modern AppKit feature unavailable on 10.6): platform/mac/WebCoreFullScreenPlaceholderView.mm
     platform/mac/WebCoreFullScreenWarningView.mm
     platform/mac/WebCoreFullScreenWindow.mm
     platform/mac/WebCoreNSURLExtras.mm
@@ -396,9 +411,9 @@ list(APPEND WebCore_SOURCES
     platform/mac/WebNSAttributedStringExtras.mm
     platform/mac/WidgetMac.mm
 
-    platform/mediastream/mac/MockRealtimeVideoSourceMac.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/mediastream/mac/MockRealtimeVideoSourceMac.mm
 
-    platform/network/cf/CertificateInfoCFNet.cpp
+# [leopard] removed (modern/non-essential on 10.6): platform/network/cf/CertificateInfoCFNet.cpp
     platform/network/cf/DNSResolveQueueCFNet.cpp
     platform/network/cf/FormDataStreamCFNet.cpp
     platform/network/cf/NetworkStorageSessionCFNet.cpp
@@ -414,7 +429,7 @@ list(APPEND WebCore_SOURCES
     platform/network/cocoa/ProtectionSpaceCocoa.mm
     platform/network/cocoa/ResourceRequestCocoa.mm
     platform/network/cocoa/ResourceResponseCocoa.mm
-    platform/network/cocoa/WebCoreNSURLSession.mm
+    # [leopard] removed media/AV/CDM/mediastream (10.6): platform/network/cocoa/WebCoreNSURLSession.mm
 
     platform/network/mac/AuthenticationMac.mm
     platform/network/mac/BlobDataFileReferenceMac.mm
@@ -519,7 +534,6 @@ list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/cocoa/LocalCurrentGraphicsContext.h
     platform/cocoa/NetworkExtensionContentFilter.h
     platform/cocoa/PlatformView.h
-    platform/cocoa/PlaybackSessionInterface.h
     platform/cocoa/PlaybackSessionModel.h
     platform/cocoa/PlaybackSessionModelMediaElement.h
     platform/cocoa/ScrollController.h
@@ -658,7 +672,7 @@ list(APPEND WebCore_IDL_FILES
     Modules/applepay/paymentrequest/ApplePayModifier.idl
     Modules/applepay/paymentrequest/ApplePayRequest.idl
 
-    Modules/plugins/QuickTimePluginReplacement.idl
+    # [leopard] Modules/plugins/QuickTimePluginReplacement.idl - no JS binding (AVFoundation-dependent .mm excluded)
 
     Modules/remoteplayback/RemotePlayback.idl
     Modules/remoteplayback/RemotePlaybackAvailabilityCallback.idl
@@ -698,7 +712,7 @@ list(APPEND WebCoreTestSupport_SOURCES
     testing/MockPreviewLoaderClient.cpp
     testing/ServiceWorkerInternals.mm
 
-    testing/cocoa/WebArchiveDumpSupport.mm
+# [leopard] removed (modern/non-essential on 10.6): testing/cocoa/WebArchiveDumpSupport.mm
 )
 list(APPEND WebCoreTestSupport_IDL_FILES
     testing/MockPaymentAddress.idl

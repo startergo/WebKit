@@ -3612,6 +3612,12 @@ static RetainPtr<NSMenuItem> createShareMenuItem(const WebCore::HitTestResult& h
     if (![items count])
         return nil;
 
+    // [leopard] +[NSMenuItem standardShareMenuItemForItems:] is 10.8+; on 10.6 it is
+    // an unrecognized selector (crashes building the context menu, e.g. when opening
+    // the Web Inspector via Inspect Element). No system Share menu on 10.6; omit it.
+    if (![NSMenuItem respondsToSelector:@selector(standardShareMenuItemForItems:)])
+        return nil;
+
     return [NSMenuItem standardShareMenuItemForItems:items.get()];
 }
 
@@ -4393,7 +4399,11 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     ASSERT(![self _webView] || [self _isTopHTMLView]);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     NSPoint windowLocation = [self.window convertRectFromScreen:{ screenPoint, NSZeroSize }].origin;
+#else
+    NSPoint windowLocation = [self.window convertScreenToBase:screenPoint];
+#endif
 
     if (auto* page = core([self _webView]))
         page->dragController().dragEnded();
@@ -4467,8 +4477,10 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
 #if PLATFORM(MAC)
     NSEvent *lastPressureEvent = [[self _webView] _pressureEvent];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (event.phase != NSEventPhaseChanged && event.phase != NSEventPhaseBegan && event.phase != NSEventPhaseEnded)
         return;
+#endif
 
     RefPtr<WebCore::Frame> coreFrame = core([self _frame]);
     if (!coreFrame)
@@ -5045,7 +5057,14 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 {
     auto* coreFrame = core([self _frame]);
     auto string = adoptNS([[NSAttributedString alloc] initWithString:@"x"
+#if defined(LEOPARD_WEBKIT)
+        // [leopard] FontAttributes::createDictionary() lives in FontAttributesCocoa.mm, excluded on
+        // 10.6 (uses 10.13+ NSTextListMarker* constants). RTF-with-font-attributes degrades to plain
+        // attributes; pass nil so we do not reference the absent WebCore symbol.
+        attributes:nil]);
+#else
         attributes:coreFrame ? coreFrame->editor().fontAttributesAtSelectionStart().createDictionary().get() : nil]);
+#endif
     return [string RTFFromRange:NSMakeRange(0, [string length]) documentAttributes:@{ }];
 }
 
@@ -5707,7 +5726,12 @@ static BOOL writingDirectionKeyBindingsEnabled()
     if (auto* coreFrame = core([self _frame])) {
         if (const WebCore::Font* fd = coreFrame->editor().fontForSelection(multipleFonts))
             font = (NSFont *)fd->platformData().registeredFont();
+#if defined(LEOPARD_WEBKIT)
+        // [leopard] createDictionary() unavailable on 10.6 (see above); leave attributes empty.
+        attributes = nil;
+#else
         attributes = coreFrame->editor().fontAttributesAtSelectionStart().createDictionary();
+#endif
     }
 
     // FIXME: for now, return a bogus font that distinguishes the empty selection from the non-empty
@@ -6176,7 +6200,13 @@ static BOOL writingDirectionKeyBindingsEnabled()
     if (_private) {
         ASSERT(!_private->drawingIntoLayer);
         _private->drawingIntoLayer = YES;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+        // [leopard-webkit-build] CALayer -drawsAsynchronously is 10.8+; on 10.6
+        // there's no async drawing → always false.
         _private->drawingIntoAcceleratedLayer = [layer drawsAsynchronously];
+#else
+        _private->drawingIntoAcceleratedLayer = NO;
+#endif
     }
 
     [super drawLayer:layer inContext:ctx];
@@ -6254,7 +6284,9 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
         NSUnderlineColorAttributeName,
         NSMarkedClauseSegmentAttributeName,
         NSTextInputReplacementRangeAttributeName,
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         NSTextAlternativesAttributeName,
+#endif
         NSTextInsertionUndoableAttributeName,
         nil];
     LOG(TextInput, "validAttributesForMarkedText -> (...)");
@@ -6295,7 +6327,11 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 
     if (window) {
         NSRect screenRect = { thePoint, NSZeroSize };
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         thePoint = [window convertRectFromScreen:screenRect].origin;
+#else
+        thePoint = [window convertScreenToBase:screenRect.origin];
+#endif
     }
     thePoint = [self convertPoint:thePoint fromView:nil];
 
@@ -6338,7 +6374,11 @@ ALLOW_DEPRECATED_IMPLEMENTATIONS_END
 
     NSWindow *window = [self window];
     if (window)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         resultRect.origin = [window convertRectToScreen:resultRect].origin;
+#else
+        resultRect.origin = [window convertBaseToScreen:resultRect.origin];
+#endif
     
     LOG(TextInput, "firstRectForCharacterRange:(%u, %u) -> (%f, %f, %f, %f)", theRange.location, theRange.length, resultRect.origin.x, resultRect.origin.y, resultRect.size.width, resultRect.size.height);
     return resultRect;

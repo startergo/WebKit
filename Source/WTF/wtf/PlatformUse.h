@@ -218,7 +218,11 @@
 #endif
 
 #if PLATFORM(COCOA)
+#if !(PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101100)
+/* [leopard] MediaToolbox soft-link (HDR video, MTShouldPlayHDRVideo etc.) is 10.11+ and
+   tied to the VIDEO subsystem (disabled on 10.6). Don't define USE_MEDIATOOLBOX on 10.6. */
 #define USE_MEDIATOOLBOX 1
+#endif
 #endif
 
 #if PLATFORM(COCOA)

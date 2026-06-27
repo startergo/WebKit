@@ -37,11 +37,11 @@ LocalCurrentGraphicsContext::LocalCurrentGraphicsContext(GraphicsContext& graphi
     }
 
     CGContextRef cgContext = this->cgContext();
-    if (cgContext == [[NSGraphicsContext currentContext] CGContext])
+    if (cgContext == (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort])
         return;
 
     m_savedNSGraphicsContext = [NSGraphicsContext currentContext];
-    NSGraphicsContext* newContext = [NSGraphicsContext graphicsContextWithCGContext:cgContext flipped:YES];
+    NSGraphicsContext* newContext = [NSGraphicsContext graphicsContextWithGraphicsPort:cgContext flipped:YES];
     [NSGraphicsContext setCurrentContext:newContext];
     m_didSetGraphicsContext = true;
 }

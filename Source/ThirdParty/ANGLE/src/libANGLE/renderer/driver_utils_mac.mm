@@ -13,14 +13,20 @@
 namespace rx
 {
 
+#import <CoreServices/CoreServices.h>
+
 OSVersion GetMacOSVersion()
 {
     OSVersion result;
 
-    NSOperatingSystemVersion version = [[NSProcessInfo processInfo] operatingSystemVersion];
-    result.majorVersion              = static_cast<int>(version.majorVersion);
-    result.minorVersion              = static_cast<int>(version.minorVersion);
-    result.patchVersion              = static_cast<int>(version.patchVersion);
+    // [leopard] NSProcessInfo.operatingSystemVersion is 10.10+. Use Gestalt on 10.6.
+    SInt32 majv = 10, minv = 6, patchv = 8;
+    Gestalt(gestaltSystemVersionMajor, &majv);
+    Gestalt(gestaltSystemVersionMinor, &minv);
+    Gestalt(gestaltSystemVersionBugFix, &patchv);
+    result.majorVersion = static_cast<int>(majv);
+    result.minorVersion = static_cast<int>(minv);
+    result.patchVersion = static_cast<int>(patchv);
 
     return result;
 }

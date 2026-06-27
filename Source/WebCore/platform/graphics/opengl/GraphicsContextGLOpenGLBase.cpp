@@ -189,9 +189,15 @@ bool GraphicsContextGLOpenGL::reshapeFBOs(const IntSize& size)
     ::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, m_texture);
     setRenderbufferStorageFromDrawable(m_currentWidth, m_currentHeight);
 #else
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     allocateIOSurfaceBackingStore(IntSize(width, height));
     updateFramebufferTextureBackingStoreFromLayer();
     ::glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, m_texture, 0);
+#else
+    ::glBindTexture(GL_TEXTURE_2D, m_texture);
+    ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
+    ::glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_texture, 0);
+#endif
 #endif // !USE(OPENGL_ES))
 #else
     ::glBindTexture(GL_TEXTURE_2D, m_texture);

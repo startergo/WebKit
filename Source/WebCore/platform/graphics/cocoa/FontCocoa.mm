@@ -308,6 +308,12 @@ static RetainPtr<CFDictionaryRef> smallCapsTrueTypeDictionary(int rawKey, int ra
 
 static void unionBitVectors(BitVector& result, CFBitVectorRef source)
 {
+    // [leopard] On 10.6 the OpenType coverage query (CTFontCopyDefaultCascadeList /
+    // feature-coverage SPI) can return a null CFBitVector where modern CoreText returns an empty
+    // one. CFBitVectorGetCount(null) dereferences null (SIGSEGV at 0x10 during small-caps synthesis
+    // in complex text layout). Treat null as no coverage.
+    if (!source)
+        return;
     CFIndex length = CFBitVectorGetCount(source);
     result.ensureSize(length);
     CFIndex min = 0;
@@ -622,6 +628,7 @@ float Font::platformWidthForGlyph(Glyph glyph) const
     bool horizontal = platformData().orientation() == FontOrientation::Horizontal;
     CGFontRenderingStyle style = kCGFontRenderingStyleAntialiasing | kCGFontRenderingStyleSubpixelPositioning | kCGFontRenderingStyleSubpixelQuantization | kCGFontAntialiasingStyleUnfiltered;
 
+#if !(defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) && __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 101200)
     if (platformData().size()) {
         CTFontOrientation orientation = horizontal || m_isBrokenIdeographFallback ? kCTFontOrientationHorizontal : kCTFontOrientationVertical;
         // FIXME: Remove this special-casing when <rdar://problem/28197291> and <rdar://problem/28662086> are fixed.
@@ -630,6 +637,19 @@ float Font::platformWidthForGlyph(Glyph glyph) const
         else
             CTFontGetUnsummedAdvancesForGlyphsAndStyle(m_platformData.ctFont(), orientation, style, &glyph, &advance, 1);
     }
+#else
+    // [leopard] CTFontGetUnsummedAdvancesForGlyphsAndStyle is 10.12+; on 10.6 it
+    // is unbound and returns a zero advance, collapsing every glyph to ~0 width
+    // (illegible overlapping text on all pages). CTFontGetAdvancesForGlyphs is
+    // available on 10.6 and returns correct advances; use it directly. (610
+    // dropped 605's canUseFastGlyphAdvanceGetter/CGFont fast path, so don't
+    // depend on it here.)
+    UNUSED_PARAM(style);
+    if (platformData().size()) {
+        CTFontOrientation orientation = horizontal || m_isBrokenIdeographFallback ? kCTFontOrientationHorizontal : kCTFontOrientationVertical;
+        CTFontGetAdvancesForGlyphs(m_platformData.ctFont(), orientation, &glyph, &advance, 1);
+    }
+#endif
     return advance.width + m_syntheticBoldOffset;
 }
 

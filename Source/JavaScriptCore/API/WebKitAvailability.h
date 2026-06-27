@@ -31,6 +31,31 @@
 #include <AvailabilityMacros.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+/* [leopard] The WebKitLegacy DOM/Web ObjC headers import <WebKitLegacy/WebKitAvailability.h>
+   (this file) and expect WEBKIT_*_DEPRECATED_MAC / WEBKIT_*_AVAILABLE_MAC to be defined.
+   On the 10.6 SDK the underlying NS_*_DEPRECATED_MAC macros leak version tokens like 10_14
+   as C++ user-defined-literals. Define all WebKit availability macros as no-ops for 10.6. */
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+#ifndef WEBKIT_AVAILABLE_MAC
+#define WEBKIT_AVAILABLE_MAC(introduced)
+#endif
+#ifndef WEBKIT_CLASS_AVAILABLE_MAC
+#define WEBKIT_CLASS_AVAILABLE_MAC(introduced)
+#endif
+#ifndef WEBKIT_ENUM_AVAILABLE_MAC
+#define WEBKIT_ENUM_AVAILABLE_MAC(introduced)
+#endif
+#ifndef WEBKIT_DEPRECATED_MAC
+#define WEBKIT_DEPRECATED_MAC(introduced, deprecated, ...)
+#endif
+#ifndef WEBKIT_CLASS_DEPRECATED_MAC
+#define WEBKIT_CLASS_DEPRECATED_MAC(introduced, deprecated, ...)
+#endif
+#ifndef WEBKIT_ENUM_DEPRECATED_MAC
+#define WEBKIT_ENUM_DEPRECATED_MAC(introduced, deprecated, ...)
+#endif
+#endif /* 10.6 no-op */
+
 #if defined(BUILDING_GTK__)
 #undef JSC_API_AVAILABLE
 #define JSC_API_AVAILABLE(...)

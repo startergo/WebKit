@@ -58,6 +58,8 @@
 #elif USE(OPENGL)
 #import <IOKit/IOKitLib.h>
 #import <OpenGL/gl.h>
+#import <OpenGL/OpenGL.h>
+#import <OpenGL/CGLIOSurface.h>
 #elif USE(ANGLE)
 #define EGL_EGL_PROTOTYPES 0
 // Skip the inclusion of ANGLE's explicit context entry points for now.
@@ -89,6 +91,14 @@ typedef void* GLeglContext;
 #endif
 
 namespace WebCore {
+
+/* [leopard] CGLUpdateContext exists in the 10.6 OpenGL dylib but is not declared in the 10.6
+   SDK headers (only the profiler enum). Declare it here where it is used by the GPU-switch
+   handlers. CGLContextObj/CGLError come from <OpenGL/CGLTypes.h>. */
+#if (USE(OPENGL) || USE(ANGLE)) && __MAC_OS_X_VERSION_MAX_ALLOWED < 1070
+extern "C" CGLError CGLUpdateContext(CGLContextObj ctx);
+#endif
+
 
 static const unsigned statusCheckThreshold = 5;
 
@@ -203,6 +213,8 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
 #else
     if (m_isForWebGL2)
         m_compiler = ANGLEWebKitBridge(SH_GLSL_410_CORE_OUTPUT, SH_WEBGL2_SPEC);
+    else
+        m_compiler = ANGLEWebKitBridge(SH_GLSL_COMPATIBILITY_OUTPUT, SH_WEBGL_SPEC);
 #endif // USE(OPENGL_ES)
 #endif // !USE(ANGLE)
 
@@ -250,12 +262,14 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
         attribs.append(static_cast<CGLPixelFormatAttribute>(4));
     }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (m_isForWebGL2) {
         // FIXME: Instead of backing a WebGL2 GraphicsContextGLOpenGL with a OpenGL 4 context, we should instead back it with ANGLE.
         // Use an OpenGL 4 context for now until the ANGLE backend is ready.
         attribs.append(kCGLPFAOpenGLProfile);
         attribs.append(static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_GL4_Core));
     }
+#endif
 
     attribs.append(static_cast<CGLPixelFormatAttribute>(0));
 
@@ -268,8 +282,10 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     CGLContextObj sharedCGLContext = sharedContext ? static_cast<CGLContextObj>(sharedContext->m_contextObj) : nullptr;
 
     CGLError err = CGLCreateContext(pixelFormatObj, sharedCGLContext, &cglContext);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     GLint abortOnBlacklist = 0;
     CGLSetParameter(cglContext, kCGLCPAbortOnGPURestartStatusBlacklisted, &abortOnBlacklist);
+#endif
 
 #if PLATFORM(MAC) // FIXME: This probably should be USE(OPENGL) - see <rdar://53062794>.
 
@@ -439,6 +455,7 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     ::glGenRenderbuffers(1, &m_texture);
 #elif USE(OPENGL)
     ::glGenTextures(1, &m_texture);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     // We bind to GL_TEXTURE_RECTANGLE_EXT rather than TEXTURE_2D because
     // that's what is required for a texture backed by IOSurface.
     ::glBindTexture(GL_TEXTURE_RECTANGLE_EXT, m_texture);
@@ -447,6 +464,16 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     ::glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     ::glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     ::glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+#else
+    // [leopard] On 10.6, render into a plain GL_TEXTURE_2D (IOSurface render-
+    // to-surface is unreliable here); the layer reads it back into a CGImage.
+    ::glBindTexture(GL_TEXTURE_2D, m_texture);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    ::glBindTexture(GL_TEXTURE_2D, 0);
+#endif
 
 #elif USE(ANGLE)
 
@@ -467,6 +494,7 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     // Create the framebuffer object.
     ::glGenFramebuffersEXT(1, &m_fbo);
     ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
+    m_state.boundDrawFBO = m_state.boundReadFBO = m_fbo;
 
     if (!attrs.antialias && (attrs.stencil || attrs.depth))
         ::glGenRenderbuffersEXT(1, &m_depthStencilBuffer);
@@ -475,6 +503,7 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     if (attrs.antialias) {
         ::glGenFramebuffersEXT(1, &m_multisampleFBO);
         ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_multisampleFBO);
+        m_state.boundDrawFBO = m_state.boundReadFBO = m_multisampleFBO;
         ::glGenRenderbuffersEXT(1, &m_multisampleColorBuffer);
         if (attrs.stencil || attrs.depth)
             ::glGenRenderbuffersEXT(1, &m_multisampleDepthStencilBuffer);
@@ -672,7 +701,7 @@ void GraphicsContextGLOpenGL::checkGPUStatus()
     m_statusCheckCount = (m_statusCheckCount + 1) % statusCheckThreshold;
 
     GLint restartStatus = 0;
-#if USE(OPENGL)
+#if USE(OPENGL) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     CGLContextObj cglContext = static_cast<CGLContextObj>(platformGraphicsContextGL());
     CGLGetParameter(cglContext, kCGLCPGPURestartStatus, &restartStatus);
     if (restartStatus == kCGLCPGPURestartStatusBlacklisted) {
@@ -684,6 +713,8 @@ void GraphicsContextGLOpenGL::checkGPUStatus()
         forceContextLost();
         CGLSetCurrentContext(0);
     }
+#elif USE(OPENGL)
+    UNUSED_VARIABLE(restartStatus);
 #elif USE(OPENGL_ES)
     EAGLContext* currentContext = static_cast<EAGLContext*>(PlatformGraphicsContextGL());
     [currentContext getParameter:kEAGLCPGPURestartStatus to:&restartStatus];

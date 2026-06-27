@@ -73,20 +73,6 @@ list(APPEND WebKitLegacy_SOURCES
     mac/Plugins/WebPluginRequest.m
     mac/Plugins/npapi.mm
 
-    mac/Plugins/Hosted/HostedNetscapePluginStream.mm
-    mac/Plugins/Hosted/NetscapePluginHostManager.mm
-    mac/Plugins/Hosted/NetscapePluginHostProxy.mm
-    mac/Plugins/Hosted/NetscapePluginInstanceProxy.mm
-    mac/Plugins/Hosted/ProxyInstance.mm
-    mac/Plugins/Hosted/ProxyRuntimeObject.mm
-    mac/Plugins/Hosted/WebHostedNetscapePluginView.mm
-    mac/Plugins/Hosted/WebKitPluginAgent.defs
-    mac/Plugins/Hosted/WebKitPluginAgentReply.defs
-    mac/Plugins/Hosted/WebKitPluginClient.defs
-    mac/Plugins/Hosted/WebKitPluginHost.defs
-    mac/Plugins/Hosted/WebKitPluginHostTypes.defs
-    mac/Plugins/Hosted/WebTextInputWindowController.m
-
     mac/Storage/WebDatabaseManager.mm
     mac/Storage/WebDatabaseManagerClient.mm
     mac/Storage/WebDatabaseProvider.mm
@@ -680,7 +666,6 @@ WEBKIT_MAKE_FORWARDING_HEADERS(WebKitLegacy
     FILES ${WebKitLegacy_FORWARDING_HEADERS_FILES}
     FLATTENED
 )
-add_dependencies(WebKitLegacyFrameworkHeaders WebCorePrivateFrameworkHeaders)
 
 set(WebKitLegacy_OUTPUT_NAME WebKitLegacy)
 

@@ -25,7 +25,10 @@
 
 #import "config.h"
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+// [leopard-webkit-build] NSPopover (the base class of WebValidationPopover) is 10.7+.
+// Gate the whole TU out on 10.6 — form-validation popovers are unavailable (forms
+// still validate; the UI popover just doesn't appear).
 #import "ValidationBubble.h"
 
 #import <AppKit/AppKit.h>

@@ -113,7 +113,10 @@ static bool pasteboardMayContainFilePaths(NSPasteboard *pasteboard)
 String PlatformPasteboard::stringForType(const String& pasteboardType) const
 {
     if (pasteboardType == String { legacyURLPasteboardType() }) {
-        String urlString = ([NSURL URLFromPasteboard:m_pasteboard.get()] ?: [NSURL URLWithString:[m_pasteboard stringForType:legacyURLPasteboardType()]]).absoluteString;
+        // [leopard-webkit-build] The nil-coalescing ternary can degrade to `id` on the
+        // 10.6 SDK; bind to NSURL* explicitly so .absoluteString resolves at compile time.
+        NSURL *pasteboardURL = [NSURL URLFromPasteboard:m_pasteboard.get()] ?: [NSURL URLWithString:[m_pasteboard stringForType:legacyURLPasteboardType()]];
+        String urlString = pasteboardURL.absoluteString;
         if (pasteboardMayContainFilePaths(m_pasteboard.get()) && !Pasteboard::canExposeURLToDOMWhenPasteboardContainsFiles(urlString))
             return { };
         return urlString;
@@ -210,7 +213,9 @@ Vector<String> PlatformPasteboard::typesSafeForDOMToReadAndWrite(const String& o
         }
     }
 
-    NSArray<NSString *> *allTypes = [m_pasteboard types];
+    // [leopard-webkit-build] NSArray lightweight generics require the 10.11+ SDK;
+    // the 10.6 SDK's NSArray is non-parameterized, so drop the type argument.
+    NSArray *allTypes = [m_pasteboard types];
     for (NSString *type in allTypes) {
         if ([type isEqualToString:@(PasteboardCustomData::cocoaType())])
             continue;

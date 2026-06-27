@@ -1007,7 +1007,7 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 
     // Delegate method sent when the user requests downloading the PDF file to disk. We pass NO for
     // showingPanel: so that the PDF file is saved to the standard location without user intervention.
-    CallUIDelegate([self _webView], @selector(webView:saveFrameView:showingPanel:), [[dataSource webFrame] frameView], NO);
+    CallUIDelegate([self _webView], @selector(webView:saveFrameView:showingPanel:), [[dataSource webFrame] frameView], (BOOL)NO);
 }
 
 + (Class)_PDFViewClass

@@ -31,6 +31,22 @@
 #if !TARGET_OS_IPHONE
 #include <Foundation/NSObjCRuntime.h>
 
+// [leopard] LEOPARD_AVAILABILITY_NOOP: on the 10.6 SDK the NS_*_DEPRECATED_MAC /
+// NS_*_AVAILABLE_MAC macros do not cleanly consume version tokens like 10_14,
+// leaking them as C++ user-defined-literals (10_4 / 10_14). Force all WebKit
+// availability annotation macros to no-ops for the 10.6 build.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+#define LEOPARD_AVAILABILITY_NOOP 1
+#define WEBKIT_AVAILABLE_MAC(introduced)
+#define WEBKIT_CLASS_AVAILABLE_MAC(introduced)
+#define WEBKIT_ENUM_AVAILABLE_MAC(introduced)
+#define WEBKIT_DEPRECATED_MAC(introduced, deprecated, ...)
+#define WEBKIT_CLASS_DEPRECATED_MAC(introduced, deprecated, ...)
+#define WEBKIT_ENUM_DEPRECATED_MAC(introduced, deprecated, ...)
+#endif
+
+#ifndef LEOPARD_AVAILABILITY_NOOP
+
 #define WEBKIT_AVAILABLE_MAC(introduced) NS_AVAILABLE_MAC(introduced)
 #define WEBKIT_CLASS_AVAILABLE_MAC(introduced) NS_CLASS_AVAILABLE_MAC(introduced)
 #define WEBKIT_ENUM_AVAILABLE_MAC(introduced) NS_ENUM_AVAILABLE_MAC(introduced)
@@ -48,6 +64,7 @@
 #define WEBKIT_ENUM_DEPRECATED_MAC(introduced, deprecated, ...) NS_ENUM_AVAILABLE_MAC(introduced)
 
 #endif /* !defined(BUILDING_WEBKIT) && !defined(DISABLE_LEGACY_WEBKIT_DEPRECATIONS) */
+#endif /* !LEOPARD_AVAILABILITY_NOOP */
 
 #else
 

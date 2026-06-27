@@ -42,6 +42,7 @@
 #if USE(OPENGL)
 #import <OpenGL/OpenGL.h>
 #import <OpenGL/gl.h>
+#import <OpenGL/CGLIOSurface.h>
 #endif
 
 #if USE(ANGLE)
@@ -57,6 +58,7 @@
 #import <ANGLE/gl2ext_angle.h>
 #endif
 
+#if USE(ANGLE)
 namespace {
     class ScopedRestoreTextureBinding {
         WTF_MAKE_NONCOPYABLE(ScopedRestoreTextureBinding);
@@ -77,6 +79,7 @@ namespace {
         GLint m_bindingValue { 0 };
     };
 }
+#endif // USE(ANGLE)
 
 @implementation WebGLLayer
 
@@ -89,9 +92,18 @@ namespace {
     auto attributes = context->contextAttributes();
     _devicePixelRatio = attributes.devicePixelRatio;
 #if USE(OPENGL) || USE(ANGLE)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     self.contentsOpaque = !attributes.alpha;
+#else
+    self.opaque = !attributes.alpha;
+#endif
     self.transform = CATransform3DIdentity;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     self.contentsScale = _devicePixelRatio;
+#else
+    /* [leopard] CALayer.contentsScale is 10.7+; 10.6 is always 1.0 (no HiDPI). */
+    UNUSED_PARAM(_devicePixelRatio);
+#endif
 #else
     self.opaque = !attributes.alpha;
 #endif
@@ -136,21 +148,20 @@ static void freeData(void *, const void *data, size_t /* size */)
     if (!imageColorSpace)
         imageColorSpace = WebCore::sRGBColorSpaceRef();
 
-    CGRect layerBounds = CGRectIntegral([self bounds]);
+    WebCore::IntSize fbSize = _context->getInternalFramebufferSize();
+    size_t width = fbSize.width();
+    size_t height = fbSize.height();
+    if (!width || !height)
+        return nullptr;
 
-    size_t width = layerBounds.size.width * _devicePixelRatio;
-    size_t height = layerBounds.size.height * _devicePixelRatio;
-
-    size_t rowBytes = (width * 4 + 15) & ~15;
+    size_t rowBytes = width * 4;
     size_t dataSize = rowBytes * height;
-    void* data = fastMalloc(dataSize);
+    unsigned char* data = static_cast<unsigned char*>(fastMalloc(dataSize));
     if (!data)
         return nullptr;
 
-    glPixelStorei(GL_PACK_ROW_LENGTH, rowBytes / 4);
-    glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+    _context->readViaCopyTexImage(data, (int)width, (int)height);
 
-    WebCore::verifyImageBufferIsBigEnough((uint8_t*)data, dataSize);
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
     CGImageRef image = CGImageCreate(width, height, 8, 32, rowBytes, imageColorSpace.get(),
         kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host, provider, 0, true, kCGRenderingIntentDefault);
@@ -170,12 +181,23 @@ static void freeData(void *, const void *data, size_t /* size */)
 
 #if USE(OPENGL)
     _context->prepareTexture();
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (_drawingBuffer) {
         std::swap(_contentsBuffer, _drawingBuffer);
         self.contents = _contentsBuffer->asLayerContents();
         [self reloadValueForKeyPath:@"contents"];
         [self bindFramebufferToNextAvailableSurface];
     }
+#else
+    // [leopard] No IOSurface on 10.6: render target is a plain GL_TEXTURE_2D
+    // FBO. Read it back into a CGImage, which 10.6 CoreAnimation accepts as
+    // layer contents (raw IOSurface contents is a 10.7+ capability).
+    {
+        RetainPtr<CGImageRef> image = adoptCF([self copyImageSnapshotWithColorSpace:WebCore::sRGBColorSpaceRef()]);
+        self.contents = (__bridge id)image.get();
+        [self reloadValueForKeyPath:@"contents"];
+    }
+#endif
 #elif USE(OPENGL_ES)
     _context->presentRenderbuffer();
 #elif USE(ANGLE)

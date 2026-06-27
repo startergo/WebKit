@@ -28,6 +28,7 @@
 
 #import "WebHistoryItemInternal.h"
 #import "WebHistoryItemPrivate.h"
+#import <objc/runtime.h>  // [leopard] associated objects for transient properties
 
 #import "WebFrameInternal.h"
 #import "WebFrameView.h"
@@ -499,6 +500,29 @@ WebHistoryItem *kit(HistoryItem* item)
 {
 }
 #endif
+
+// [leopard] Safari 5.0.5 calls -[WebHistoryItem _transientPropertyForKey:] after a load completes
+// (CallFrameLoadDelegate -> dispatchDidFinishLoad). 610 removed the transient-property API from
+// WebCore::HistoryItem (605 had getTransientProperty/setTransientProperty). Reimplement locally via
+// objc associated objects so the SPI exists without a WebCore change.
+- (id)_transientPropertyForKey:(NSString *)key
+{
+    NSMutableDictionary *props = objc_getAssociatedObject(self, @selector(_transientPropertyForKey:));
+    return [props objectForKey:key];
+}
+
+- (void)_setTransientProperty:(id)property forKey:(NSString *)key
+{
+    NSMutableDictionary *props = objc_getAssociatedObject(self, @selector(_transientPropertyForKey:));
+    if (!props) {
+        props = [NSMutableDictionary dictionary];
+        objc_setAssociatedObject(self, @selector(_transientPropertyForKey:), props, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    if (property)
+        [props setObject:property forKey:key];
+    else
+        [props removeObjectForKey:key];
+}
 
 - (BOOL)lastVisitWasFailure
 {

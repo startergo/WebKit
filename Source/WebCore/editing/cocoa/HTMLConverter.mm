@@ -1350,7 +1350,12 @@ BOOL HTMLConverter::_addAttachmentForElement(Element& element, NSURL *url, BOOL 
 #endif
             ASSERT_WITH_MESSAGE(missingImage != nil, "Unable to find missingImage.");
             attachment = adoptNS([[PlatformNSTextAttachment alloc] initWithData:nil ofType:nil]);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
             attachment.get().image = missingImage;
+#else
+            /* [leopard] NSTextAttachment.image is 10.11+; unavailable on 10.6. */
+            UNUSED_PARAM(missingImage);
+#endif
         }
         [_attrStr replaceCharactersInRange:rangeToReplace withString:string.get()];
         rangeToReplace.length = [string length];

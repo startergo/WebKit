@@ -46,7 +46,7 @@ HashSet<SecurityOriginData> CredentialStorage::originsWithSessionCredentials()
         for (NSURLProtectionSpace* space in allCredentials) {
             auto credentials = allCredentials[space];
             for (NSString* user in credentials) {
-                if (credentials[user].persistence == NSURLCredentialPersistenceForSession) {
+                if (((NSURLCredential *)credentials[user]).persistence == NSURLCredentialPersistenceForSession) {
                     origins.add(WebCore::SecurityOriginData { String(key.protocol), String(key.host), key.port });
                     break;
                 }
@@ -68,7 +68,7 @@ void CredentialStorage::removeSessionCredentialsWithOrigins(const Vector<Securit
                 && *origin.port == space.port) {
                     auto credentials = allCredentials[space];
                     for (NSString* user in credentials) {
-                        auto credential = credentials[user];
+                        NSURLCredential *credential = (NSURLCredential *)credentials[user];
                         if (credential.persistence == NSURLCredentialPersistenceForSession)
                             [sharedStorage removeCredential:credential forProtectionSpace:space];
                 }
@@ -84,7 +84,7 @@ void CredentialStorage::clearSessionCredentials()
     for (NSURLProtectionSpace* space in allCredentials.keyEnumerator) {
         auto credentials = allCredentials[space];
         for (NSString* user in credentials) {
-            auto credential = credentials[user];
+            NSURLCredential *credential = (NSURLCredential *)credentials[user];
             if (credential.persistence == NSURLCredentialPersistenceForSession)
                 [sharedStorage removeCredential:credential forProtectionSpace:space];
         }

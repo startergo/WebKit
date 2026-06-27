@@ -602,6 +602,9 @@ public:
     ExtensionsGL& getExtensions() final;
 
     IntSize getInternalFramebufferSize() const;
+    GCGLuint getInternalFramebuffer() const { return m_fbo; }
+    void readRenderingResultsForSnapshot(unsigned char* pixels, int pixelsSize) { readRenderingResults(pixels, pixelsSize); }
+    void readViaCopyTexImage(unsigned char* pixels, int width, int height);
 
     // Packs the contents of the given Image which is passed in |pixels| into the passed Vector
     // according to the given format and type, and obeying the flipY and AlphaOp flags.

@@ -43,6 +43,17 @@
 #import "TextIndicator.h"
 #import "WebKitNSImageExtras.h"
 #import <pal/spi/cg/CoreGraphicsSPI.h>
+
+/* [leopard] CGPath functions introduced after 10.6 (impls in sdk_stubs_605.mm). Declared here
+   where CoreGraphics types are in scope (the force-included supplement can't reference CG types). */
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 101100
+extern "C" {
+CGPathRef CGPathCreateWithRect(CGRect rect, const CGAffineTransform *transform);
+void CGPathAddRoundedRect(CGMutablePathRef path, const CGAffineTransform *transform, CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight);
+CGMutablePathRef CGPathCreateMutableCopyByTransformingPath(CGPathRef path, const CGAffineTransform *transform);
+}
+#endif
+
 #import <pal/spi/cocoa/CoreTextSPI.h>
 #import <pal/spi/cocoa/URLFormattingSPI.h>
 #import <wtf/SoftLinking.h>
@@ -252,7 +263,17 @@ LinkImageLayout::LinkImageLayout(URL& url, const String& titleString)
         for (CFIndex lineIndex = 0; lineIndex < lineCount; ++lineIndex) {
             CTLineRef line = (CTLineRef)CFArrayGetValueAtIndex(ctLines, lineIndex);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
             lineBounds = CTLineGetBoundsWithOptions(line, 0);
+#else
+            /* [leopard] CTLineGetBoundsWithOptions is 10.8+; compose bounds from typographic
+               metrics (ascent/descent/width) available since 10.5. */
+            {
+                CGFloat ascent = 0, descent = 0, leading = 0;
+                double width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading);
+                lineBounds = CGRectMake(0, -descent, width, ascent + descent);
+            }
+#endif
             CGFloat trailingWhitespaceWidth = CTLineGetTrailingWhitespaceWidth(line);
             CGFloat lineWidthIgnoringTrailingWhitespace = lineBounds.size.width - trailingWhitespaceWidth;
             maximumUsedTextWidth = std::max(maximumUsedTextWidth, lineWidthIgnoringTrailingWhitespace);

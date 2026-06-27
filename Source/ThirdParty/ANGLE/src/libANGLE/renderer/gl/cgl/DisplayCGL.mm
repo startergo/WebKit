@@ -80,8 +80,13 @@ egl::Error DisplayCGL::initialize(egl::Display *display)
     {
         // TODO(cwallez) investigate which pixel format we want
         std::vector<CGLPixelFormatAttribute> attribs;
+        // [leopard] kCGLPFAOpenGLProfile/kCGLOGLPVersion_3_2_Core are 10.7+. On 10.6 the only
+        // available profile is Legacy (2.1); requesting a profile attribute fails, so we omit it
+        // and let CGL pick the default (Legacy) format. WebGL 1.0 maps onto GL 2.1.
+        #ifdef kCGLPFAOpenGLProfile
         attribs.push_back(kCGLPFAOpenGLProfile);
         attribs.push_back(static_cast<CGLPixelFormatAttribute>(kCGLOGLPVersion_3_2_Core));
+        #endif
         attribs.push_back(kCGLPFAAllowOfflineRenderers);
         attribs.push_back(static_cast<CGLPixelFormatAttribute>(0));
         GLint nVirtualScreens = 0;

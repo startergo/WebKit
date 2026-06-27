@@ -43,7 +43,11 @@ namespace PAL {
 
 void popUpMenu(NSMenu *menu, NSPoint location, float width, NSView *view, int selectedItem, NSFont *font, NSControlSize controlSize, bool usesCustomAppearance)
 {
-    NSRect adjustedPopupBounds = [view.window convertRectToScreen:[view convertRect:view.bounds toView:nil]];
+    // [leopard] convertRectToScreen: is 10.7+. On 10.6 build the screen rect manually
+    // via convertBaseToScreen: (NSPoint, 10.6-available). LEOPARD_POPUP_RECT
+    NSRect baseRect = [view convertRect:view.bounds toView:nil];
+    NSPoint screenOrigin = [view.window convertBaseToScreen:baseRect.origin];
+    NSRect adjustedPopupBounds = NSMakeRect(screenOrigin.x, screenOrigin.y, baseRect.size.width, baseRect.size.height);
     ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (controlSize != NSMiniControlSize) {
         ALLOW_DEPRECATED_DECLARATIONS_END
@@ -54,8 +58,12 @@ void popUpMenu(NSMenu *menu, NSPoint location, float width, NSView *view, int se
 
     // These numbers were extracted from visual inspection as the menu animates shut.
     NSSize labelOffset = NSMakeSize(11, 1);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+    // userInterfaceLayoutDirection / NSUserInterfaceLayoutDirection are 10.8+;
+    // on 10.6 assume left-to-right.
     if (menu.userInterfaceLayoutDirection == NSUserInterfaceLayoutDirectionRightToLeft)
         labelOffset = NSMakeSize(24, 1);
+#endif
 
     auto options = adoptNS([@{
         NSPopUpMenuPopupButtonBounds : [NSValue valueWithRect:adjustedPopupBounds],

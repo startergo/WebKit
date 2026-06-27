@@ -54,10 +54,12 @@ void SettingsBase::initializeDefaultFontFamilies()
     setSansSerifFontFamily("Helvetica", USCRIPT_COMMON);
 }
 
+#if ENABLE(MEDIA_SOURCE)
 bool SettingsBase::platformDefaultMediaSourceEnabled()
 {
     return true;
 }
+#endif
 
 #else
 

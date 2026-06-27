@@ -29,6 +29,12 @@
 
 #else
 
+/* [leopard] PDFKitPlatformScrollView is a newer PDFKit typedef; on 10.6 it's NSScrollView. */
+#ifndef PDFKitPlatformScrollView_leopard
+#define PDFKitPlatformScrollView_leopard 1
+typedef NSScrollView PDFKitPlatformScrollView;
+#endif
+
 @interface PDFView ()
 - (PDFKitPlatformScrollView *)documentScrollView;
 @end

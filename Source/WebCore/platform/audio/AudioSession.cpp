@@ -81,7 +81,7 @@ void AudioSession::endInterruption(MayResume)
 }
 #endif
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070)
 class AudioSessionPrivate {
     WTF_MAKE_FAST_ALLOCATED;
 };
@@ -161,7 +161,28 @@ String AudioSession::routingContextUID() const
     return emptyString();
 }
 
-#endif // !PLATFORM(COCOA)
+void AudioSession::addMutedStateObserver(MutedStateObserver*)
+{
+    notImplemented();
+}
+
+void AudioSession::removeMutedStateObserver(MutedStateObserver*)
+{
+    notImplemented();
+}
+
+void AudioSession::handleMutedStateChange()
+{
+    notImplemented();
+}
+
+bool AudioSession::isMuted() const
+{
+    notImplemented();
+    return false;
+}
+
+#endif // !PLATFORM(COCOA) || 10.6 Mac stub
 
 String convertEnumerationToString(RouteSharingPolicy enumerationValue)
 {

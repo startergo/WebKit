@@ -486,7 +486,15 @@ public:
         @YES, WebKitZoomsTextOnlyPreferenceKey,
         @NO, WebKitJavaScriptCanAccessClipboardPreferenceKey,
         @YES, WebKitXSSAuditorEnabledPreferenceKey,
+#if defined(LEOPARD_WEBKIT)
+        // [leopard] CoreAnimation accelerated compositing is fragile on 10.6's CALayer surface
+        // (post-10.6 CA selectors in layer init -> SIGTRAP) and pointless on the software-only
+        // QEMU GPU. Default OFF so the proven software rendering path is used. WebGL uses the
+        // ContentsProvided/ANGLE path, not root CA compositing.
+        @NO, WebKitAcceleratedCompositingEnabledPreferenceKey,
+#else
         @YES, WebKitAcceleratedCompositingEnabledPreferenceKey,
+#endif
 #if PLATFORM(MAC)
 #define DEFAULT_SUBPIXEL_ANTIALIASED_LAYER_TEXT_ENABLED YES
 #else
@@ -686,7 +694,7 @@ public:
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
 #endif
-        @NO, WebKitUserTimingEnabledPreferenceKey,
+        @YES, WebKitUserTimingEnabledPreferenceKey,
         @NO, WebKitResourceTimingEnabledPreferenceKey,
         @NO, WebKitMediaUserGestureInheritsFromDocument,
         @NO, WebKitIsSecureContextAttributeEnabledPreferenceKey,

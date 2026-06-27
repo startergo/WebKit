@@ -106,6 +106,18 @@
 
 #endif // ENABLE(SERVICE_CONTROLS)
 
+// [leopard-webkit-build] Forward declarations for 10.8+/10.9+ APIs absent from the
+// 10.6 SDK. Placed AFTER all imports so CG/CT types are already defined. Definitions
+// in sdk_stubs_605.mm.
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1080
+extern "C" CFTypeRef CFAutorelease(CFTypeRef cf);
+typedef unsigned int CTLineBoundsOptions;
+extern "C" CGRect CTLineGetBoundsWithOptions(CTLineRef, CTLineBoundsOptions);
+#endif
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1090
+extern "C" CGPathRef CGPathCreateWithRect(CGRect, const CGAffineTransform*);
+#endif
+
 // FIXME: This should go into an SPI.h file in the spi directory.
 @interface NSTextFieldCell ()
 - (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus;
@@ -151,6 +163,9 @@ static const double progressAnimationNumFrames = 256;
 @interface WebCoreTextFieldCell : NSTextFieldCell
 @end
 
+@interface WebCoreSearchFieldCell : NSSearchFieldCell
+@end
+
 @implementation WebCoreTextFieldCell
 
 - (CFDictionaryRef)_adjustedCoreUIDrawOptionsForDrawingBordersOnly:(CFDictionaryRef)defaultOptions
@@ -179,6 +194,34 @@ static const double progressAnimationNumFrames = 256;
 - (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus maskOnly:(BOOL)maskOnly
 {
     return [self _adjustedCoreUIDrawOptionsForDrawingBordersOnly:[super _coreUIDrawOptionsWithFrame:cellFrame inView:controlView includeFocus:includeFocus maskOnly:maskOnly]];
+}
+
+@end
+
+@implementation WebCoreSearchFieldCell
+
+- (void)drawWithFrame:(NSRect)cellFrame inView:(NSView *)controlView
+{
+    [self setControlView:controlView];
+
+    CGContextRef context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+    CGContextSaveGState(context);
+
+    NSRect borderRect = NSInsetRect(cellFrame, 0.5, 0.5);
+    CGFloat radius = borderRect.size.height / 2.0;
+    if (radius > borderRect.size.width / 2.0)
+        radius = borderRect.size.width / 2.0;
+
+    NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:borderRect xRadius:radius yRadius:radius];
+
+    [[NSColor whiteColor] setFill];
+    [path fill];
+
+    [[NSColor colorWithCalibratedWhite:0.6 alpha:1.0] setStroke];
+    [path setLineWidth:1.0];
+    [path stroke];
+
+    CGContextRestoreGState(context);
 }
 
 @end
@@ -295,13 +338,16 @@ NSView *RenderThemeMac::documentViewFor(const RenderObject& o) const
     return ThemeMac::ensuredView(&o.view().frameView(), states);
 }
 
+#if ENABLE(VIDEO) // [leopard] match the ENABLE(VIDEO)-gated declaration
 String RenderThemeMac::mediaControlsStyleSheet()
 {
     if (m_legacyMediaControlsStyleSheet.isEmpty())
         m_legacyMediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
     return m_legacyMediaControlsStyleSheet;
 }
+#endif // ENABLE(VIDEO) [leopard]
 
+#if ENABLE(VIDEO) // [leopard] match the ENABLE(VIDEO)-gated declaration
 String RenderThemeMac::modernMediaControlsStyleSheet()
 {
     if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
@@ -311,6 +357,7 @@ String RenderThemeMac::modernMediaControlsStyleSheet()
     }
     return emptyString();
 }
+#endif // ENABLE(VIDEO) [leopard]
 
 void RenderThemeMac::purgeCaches()
 {
@@ -322,6 +369,7 @@ void RenderThemeMac::purgeCaches()
     RenderTheme::purgeCaches();
 }
 
+#if ENABLE(VIDEO) // [leopard] match the ENABLE(VIDEO)-gated declaration
 String RenderThemeMac::mediaControlsScript()
 {
     if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
@@ -342,7 +390,9 @@ String RenderThemeMac::mediaControlsScript()
     }
     return m_legacyMediaControlsScript;
 }
+#endif // ENABLE(VIDEO) [leopard]
 
+#if ENABLE(VIDEO) // [leopard] match the ENABLE(VIDEO)-gated declaration
 String RenderThemeMac::mediaControlsBase64StringForIconNameAndType(const String& iconName, const String& iconType)
 {
     if (!RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
@@ -352,6 +402,7 @@ String RenderThemeMac::mediaControlsBase64StringForIconNameAndType(const String&
     NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
     return [[NSData dataWithContentsOfFile:[bundle pathForResource:iconName ofType:iconType inDirectory:directory]] base64EncodedStringWithOptions:0];
 }
+#endif // ENABLE(VIDEO) [leopard]
 
 #if ENABLE(SERVICE_CONTROLS)
 
@@ -2329,12 +2380,16 @@ NSPopUpButtonCell* RenderThemeMac::popupButton() const
 NSSearchFieldCell* RenderThemeMac::search() const
 {
     if (!m_search) {
-        m_search = adoptNS([[NSSearchFieldCell alloc] initTextCell:@""]);
+        m_search = adoptNS([[WebCoreSearchFieldCell alloc] initTextCell:@""]);
         [m_search.get() setBezelStyle:NSTextFieldRoundedBezel];
         [m_search.get() setBezeled:YES];
         [m_search.get() setEditable:YES];
         [m_search.get() setFocusRingType:NSFocusRingTypeExterior];
-        [m_search.get() setCenteredLook:NO];
+        // [leopard] -[NSSearchFieldCell setCenteredLook:] is a 10.7+ private SPI; absent
+        // on 10.6 -> unrecognized selector when rendering search fields (e.g. the Web
+        // Inspector console filter box). Guard it; the centered look is cosmetic.
+        if ([m_search.get() respondsToSelector:@selector(setCenteredLook:)])
+            [m_search.get() setCenteredLook:NO];
     }
 
     return m_search.get();

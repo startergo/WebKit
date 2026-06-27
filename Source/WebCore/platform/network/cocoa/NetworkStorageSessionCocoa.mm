@@ -117,6 +117,7 @@ void NetworkStorageSession::hasCookies(const RegistrableDomain& domain, Completi
     completionHandler(false);
 }
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
 void NetworkStorageSession::setAllCookiesToSameSiteStrict(const RegistrableDomain& domain, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
@@ -147,6 +148,7 @@ void NetworkStorageSession::setAllCookiesToSameSiteStrict(const RegistrableDomai
 #endif
     completionHandler();
 }
+#endif // ENABLE(RESOURCE_LOAD_STATISTICS) [leopard]
 
 void NetworkStorageSession::flushCookieStore()
 {
@@ -249,6 +251,16 @@ static NSArray *cookiesForURL(NSHTTPCookieStorage *storage, NSURL *url, NSURL *m
     auto completionHandler = [&cookiesPtr] (NSArray *cookies) {
         cookiesPtr = retainPtr(cookies);
     };
+    // [leopard] The _getCookiesForURL:...:completionHandler: SPIs are 10.9+ (cookie partitioning/ITP)
+    // and do not exist on 10.6 (unrecognized selector). Fall back to the basic public
+    // -[NSHTTPCookieStorage cookiesForURL:] (10.2+), matching the 605 reference. Partition and
+    // SameSite are not enforceable on 10.6's cookie store.
+    if (![storage respondsToSelector:@selector(_getCookiesForURL:mainDocumentURL:partition:completionHandler:)]) {
+        UNUSED_PARAM(mainDocumentURL);
+        UNUSED_PARAM(sameSiteInfo);
+        UNUSED_PARAM(partition);
+        return [storage cookiesForURL:url];
+    }
 // FIXME: Seems like this newer code path can be used for watchOS and tvOS too.
 #if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
     if ([storage respondsToSelector:@selector(_getCookiesForURL:mainDocumentURL:partition:policyProperties:completionHandler:)])
@@ -304,7 +316,15 @@ NSArray *NetworkStorageSession::httpCookiesForURL(CFHTTPCookieStorageRef cookieS
 
     // FIXME: Stop creating a new NSHTTPCookieStorage object each time we want to query the cookie jar.
     // NetworkStorageSession could instead keep a NSHTTPCookieStorage object for us.
-    RetainPtr<NSHTTPCookieStorage> nsCookieStorage = adoptNS([[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:cookieStorage]);
+    // [leopard] -[NSHTTPCookieStorage _initWithCFHTTPCookieStorage:] is a modern private SPI absent
+    // on 10.6 (unrecognized selector). When the CF storage is the process default (always true here,
+    // since a null storage is replaced with _CFHTTPCookieStorageGetDefault above), the shared
+    // NSHTTPCookieStorage wraps the same jar -- use it directly, matching nsCookieStorage().
+    RetainPtr<NSHTTPCookieStorage> nsCookieStorage;
+    if (cookieStorage == _CFHTTPCookieStorageGetDefault(kCFAllocatorDefault))
+        nsCookieStorage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+    else
+        nsCookieStorage = adoptNS([[NSHTTPCookieStorage alloc] _initWithCFHTTPCookieStorage:cookieStorage]);
     return WebCore::cookiesForURL(nsCookieStorage.get(), url, firstParty, sameSiteInfo);
 }
 
@@ -453,9 +473,13 @@ void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameS
     NSURL *cookieURL = url;
     NSDictionary *headerFields = @{ @"Set-Cookie": cookieString };
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) && !defined(LEOPARD_WEBKIT)
     NSArray *unfilteredCookies = [NSHTTPCookie _parsedCookiesWithResponseHeaderFields:headerFields forURL:cookieURL];
 #else
+    // [leopard] +[NSHTTPCookie _parsedCookiesWithResponseHeaderFields:forURL:] is a modern private
+    // SPI absent on 10.6 (unrecognized selector when JS sets document.cookie). Use the public
+    // +cookiesWithResponseHeaderFields:forURL: (10.2+); the cookieString already appends '=' above
+    // so valueless cookies still parse.
     NSArray *unfilteredCookies = [NSHTTPCookie cookiesWithResponseHeaderFields:headerFields forURL:cookieURL];
 #endif
 

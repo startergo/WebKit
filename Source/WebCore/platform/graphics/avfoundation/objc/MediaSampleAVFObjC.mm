@@ -391,3 +391,5 @@ Vector<Ref<MediaSampleAVFObjC>> MediaSampleAVFObjC::divideIntoHomogeneousSamples
 }
 
 }
+
+#endif // ENABLE(VIDEO) && USE(AVFOUNDATION)

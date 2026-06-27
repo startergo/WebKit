@@ -150,9 +150,12 @@ typedef enum {
 @property BOOL inheritsSecurity;
 @end
 
+// [leopard] LEOPARD_CASPRING: CASpringAnimation is 10.11+. Skip the category on 10.6.
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
 @interface CASpringAnimation (Private)
 @property CGFloat velocity;
 @end
+#endif
 
 @interface CAMediaTimingFunction ()
 - (float)_solveForInput:(float)t;

@@ -77,7 +77,12 @@
 
 #if defined(XP_MACOSX)
 #include <CoreGraphics/CoreGraphics.h>
+// [leopard] LEOPARD_NPAPI_NO_SYSGL: under USE(ANGLE), system <OpenGL/gl.h> (pulled by
+// <OpenGL/OpenGL.h>) conflicts with ANGLE's gl2.h prototypes. The NPAPI CoreOpenGL
+// drawing model is unused on this 10.6 build, so skip the system-GL include when ANGLE owns GL.
+#if !(defined(USE_ANGLE) && USE_ANGLE)
 #include <OpenGL/OpenGL.h>
+#endif
 #ifndef NP_NO_CARBON
 #include <Carbon/Carbon.h>
 #endif

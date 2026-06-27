@@ -263,6 +263,37 @@ void GraphicsContextGLOpenGL::prepareTexture()
     ::glFlush();
 }
 
+void GraphicsContextGLOpenGL::readViaCopyTexImage(unsigned char* pixels, int width, int height)
+{
+    makeContextCurrent();
+
+    if (contextAttributes().antialias)
+        resolveMultisamplingIfNecessary();
+
+    ::glBindFramebufferEXT(GraphicsContextGL::FRAMEBUFFER, m_fbo);
+
+    GLuint tempTex = 0;
+    ::glGenTextures(1, &tempTex);
+    ::glBindTexture(GL_TEXTURE_2D, tempTex);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    ::glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, width, height, 0);
+
+    GLuint tempFBO = 0;
+    ::glGenFramebuffersEXT(1, &tempFBO);
+    ::glBindFramebufferEXT(GraphicsContextGL::FRAMEBUFFER, tempFBO);
+    ::glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, tempTex, 0);
+
+    ::glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    ::glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
+
+    ::glBindFramebufferEXT(GraphicsContextGL::FRAMEBUFFER, m_state.boundDrawFBO);
+    ::glDeleteFramebuffersEXT(1, &tempFBO);
+    ::glDeleteTextures(1, &tempTex);
+}
+
 void GraphicsContextGLOpenGL::readRenderingResults(unsigned char *pixels, int pixelsSize)
 {
     if (pixelsSize < m_currentWidth * m_currentHeight * 4)
@@ -1516,7 +1547,9 @@ PlatformGLObject GraphicsContextGLOpenGL::createVertexArray()
 {
     makeContextCurrent();
     GLuint array = 0;
-#if (!USE(OPENGL_ES) && (PLATFORM(GTK) || PLATFORM(WIN))) || PLATFORM(COCOA)
+#if PLATFORM(COCOA) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+    glGenVertexArraysAPPLE(1, &array);
+#elif (!USE(OPENGL_ES) && (PLATFORM(GTK) || PLATFORM(WIN))) || PLATFORM(COCOA)
     ::glGenVertexArrays(1, &array);
 #endif
     return array;
@@ -1528,7 +1561,9 @@ void GraphicsContextGLOpenGL::deleteVertexArray(PlatformGLObject array)
         return;
     
     makeContextCurrent();
-#if (!USE(OPENGL_ES) && (PLATFORM(GTK) || PLATFORM(WIN))) || PLATFORM(COCOA)
+#if PLATFORM(COCOA) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+    glDeleteVertexArraysAPPLE(1, &array);
+#elif (!USE(OPENGL_ES) && (PLATFORM(GTK) || PLATFORM(WIN))) || PLATFORM(COCOA)
     ::glDeleteVertexArrays(1, &array);
 #endif
 }
@@ -1539,7 +1574,9 @@ GCGLboolean GraphicsContextGLOpenGL::isVertexArray(PlatformGLObject array)
         return GL_FALSE;
     
     makeContextCurrent();
-#if (!USE(OPENGL_ES) && (PLATFORM(GTK) || PLATFORM(WIN))) || PLATFORM(COCOA)
+#if PLATFORM(COCOA) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+    return glIsVertexArrayAPPLE(array);
+#elif (!USE(OPENGL_ES) && (PLATFORM(GTK) || PLATFORM(WIN))) || PLATFORM(COCOA)
     return ::glIsVertexArray(array);
 #endif
     return GL_FALSE;
@@ -1548,7 +1585,9 @@ GCGLboolean GraphicsContextGLOpenGL::isVertexArray(PlatformGLObject array)
 void GraphicsContextGLOpenGL::bindVertexArray(PlatformGLObject array)
 {
     makeContextCurrent();
-#if (!USE(OPENGL_ES) && (PLATFORM(GTK) || PLATFORM(WIN))) || PLATFORM(COCOA)
+#if PLATFORM(COCOA) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+    glBindVertexArrayAPPLE(array);
+#elif (!USE(OPENGL_ES) && (PLATFORM(GTK) || PLATFORM(WIN))) || PLATFORM(COCOA)
     ::glBindVertexArray(array);
 #else
     UNUSED_PARAM(array);

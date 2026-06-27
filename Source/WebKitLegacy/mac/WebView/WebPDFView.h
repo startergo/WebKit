@@ -31,6 +31,13 @@
 #import <Quartz/Quartz.h>
 #import <WebKitLegacy/WebDocumentInternal.h>
 
+/* [leopard] PDFViewDelegate became a formal protocol after 10.6; forward-declare so the
+   <PDFViewDelegate> conformance compiles (PDFKit delegation is informal on 10.6). */
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1070
+@protocol PDFViewDelegate <NSObject>
+@end
+#endif
+
 @class WebDataSource;
 
 @interface WebPDFView : NSView <PDFViewDelegate, WebDocumentView, WebDocumentSearching, WebDocumentIncrementalSearching, WebMultipleTextMatches, WebDocumentSelection, WebDocumentElement, WebDocumentPDF, _WebDocumentViewState, _WebDocumentZooming>

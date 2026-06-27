@@ -168,7 +168,11 @@ Vector<RetainPtr<CTFontDescriptorRef>> SystemFontDatabaseCoreText::computeCascad
 {
     CFTypeRef arrayValues[] = { locale };
     auto localeArray = adoptCF(CFArrayCreate(kCFAllocatorDefault, arrayValues, WTF_ARRAY_LENGTH(arrayValues), &kCFTypeArrayCallBacks));
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     auto cascadeList = adoptCF(CTFontCopyDefaultCascadeListForLanguages(font, localeArray.get()));
+#else
+    RetainPtr<CFArrayRef> cascadeList;
+#endif
     Vector<RetainPtr<CTFontDescriptorRef>> result;
     // WebKit handles the cascade list, and WebKit 2's IPC code doesn't know how to serialize Core Text's cascade list.
     result.append(removeCascadeList(adoptCF(CTFontCopyFontDescriptor(font)).get()));

@@ -449,7 +449,15 @@ static WebCore::IntRect elementBoundingBoxInWindowCoordinatesFromNode(WebCore::N
         [_webView _clearTextIndicatorWithAnimation:WebCore::TextIndicatorWindowDismissalAnimation::FadeOut];
     }];
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     [_currentActionContext setHighlightFrame:[_webView.window convertRectToScreen:detectedItem->boundingBox]];
+#else
+    {
+        NSRect __r = detectedItem->boundingBox;
+        __r.origin = [_webView.window convertBaseToScreen:__r.origin];
+        [_currentActionContext setHighlightFrame:__r];
+    }
+#endif
 
     NSArray *menuItems = [[getDDActionsManagerClass() sharedManager] menuItemsForResult:[_currentActionContext mainResult] actionContext:_currentActionContext.get()];
     if (menuItems.count != 1)
@@ -484,7 +492,15 @@ static WebCore::IntRect elementBoundingBoxInWindowCoordinatesFromNode(WebCore::N
         [_webView _clearTextIndicatorWithAnimation:WebCore::TextIndicatorWindowDismissalAnimation::FadeOut];
     }];
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     [_currentActionContext setHighlightFrame:[_webView.window convertRectToScreen:elementBoundingBoxInWindowCoordinatesFromNode(_hitTestResult.URLElement())]];
+#else
+    {
+        NSRect __r = elementBoundingBoxInWindowCoordinatesFromNode(_hitTestResult.URLElement());
+        __r.origin = [_webView.window convertBaseToScreen:__r.origin];
+        [_currentActionContext setHighlightFrame:__r];
+    }
+#endif
 
     NSArray *menuItems = [[getDDActionsManagerClass() sharedManager] menuItemsForTargetURL:_hitTestResult.absoluteLinkURL().string() actionContext:_currentActionContext.get()];
     if (menuItems.count != 1)

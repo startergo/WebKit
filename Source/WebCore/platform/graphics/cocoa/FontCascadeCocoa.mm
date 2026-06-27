@@ -179,8 +179,27 @@ static void showGlyphsWithAdvances(const FloatPoint& point, const Font& font, CG
         }
         CTFontDrawGlyphs(platformData.ctFont(), glyphs, positions.data(), count, context);
     } else {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+        // CTFontDrawGlyphs is a 10.7+ API (absent from the 10.6 CoreText headers).
+        // It is exported on 10.6 but undocumented there, and — critically — does not
+        // honor the per-glyph positions the way 10.7+ does: WebKit pre-transforms
+        // those positions with the *inverse* text matrix expecting 10.7+'s
+        // CTFontDrawGlyphs to re-apply it. On 10.6 that double-handling is lost, so
+        // the positions come out wrong and the flipped text matrix is ignored,
+        // producing mangled, vertically-mirrored glyphs. Fall back to the classic
+        // CoreGraphics glyph path, which honors CGContextSetTextPosition + the text
+        // matrix (hence the flip) correctly on every macOS back to 10.0. Both the
+        // simple and complex code paths route through this function, so this fixes
+        // all text rendering.
+        RetainPtr<CGFontRef> cgFont = adoptCF(CTFontCopyGraphicsFont(platformData.ctFont(), nullptr));
+        CGContextSetFont(context, cgFont.get());
+        CGContextSetFontSize(context, platformData.size());
+        CGContextShowGlyphsWithAdvances(context, glyphs, advances, count);
+        CGContextSetFont(context, nullptr);
+#else
         fillVectorWithHorizontalGlyphPositions(positions, context, advances, count);
         CTFontDrawGlyphs(platformData.ctFont(), glyphs, positions.data(), count, context);
+#endif
     }
 }
 

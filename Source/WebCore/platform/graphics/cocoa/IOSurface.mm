@@ -326,22 +326,34 @@ GraphicsContext& IOSurface::ensureGraphicsContext()
 
 IOSurface::SurfaceState IOSurface::state() const
 {
+#if defined(LEOPARD_WEBKIT)
+    return IOSurface::SurfaceState::Valid; /* [leopard] IOSurfaceSetPurgeable is 10.7+ */
+#else
     uint32_t previousState = 0;
     IOReturn ret = IOSurfaceSetPurgeable(m_surface.get(), kIOSurfacePurgeableKeepCurrent, &previousState);
     ASSERT_UNUSED(ret, ret == kIOReturnSuccess);
     return previousState == kIOSurfacePurgeableEmpty ? IOSurface::SurfaceState::Empty : IOSurface::SurfaceState::Valid;
+#endif
 }
 
 bool IOSurface::isVolatile() const
 {
+#if defined(LEOPARD_WEBKIT)
+    return false; /* [leopard] IOSurfaceSetPurgeable is 10.7+; surfaces always resident */
+#else
     uint32_t previousState = 0;
     IOReturn ret = IOSurfaceSetPurgeable(m_surface.get(), kIOSurfacePurgeableKeepCurrent, &previousState);
     ASSERT_UNUSED(ret, ret == kIOReturnSuccess);
     return previousState != kIOSurfacePurgeableNonVolatile;
+#endif
 }
 
 IOSurface::SurfaceState IOSurface::setIsVolatile(bool isVolatile)
 {
+#if defined(LEOPARD_WEBKIT)
+    UNUSED_PARAM(isVolatile); /* [leopard] IOSurfaceSetPurgeable is 10.7+; no-op, surface stays valid */
+    return IOSurface::SurfaceState::Valid;
+#else
     uint32_t previousState = 0;
     IOReturn ret = IOSurfaceSetPurgeable(m_surface.get(), isVolatile ? kIOSurfacePurgeableVolatile : kIOSurfacePurgeableNonVolatile, &previousState);
     ASSERT_UNUSED(ret, ret == kIOReturnSuccess);
@@ -350,6 +362,7 @@ IOSurface::SurfaceState IOSurface::setIsVolatile(bool isVolatile)
         return IOSurface::SurfaceState::Empty;
 
     return IOSurface::SurfaceState::Valid;
+#endif
 }
 
 IOSurface::Format IOSurface::format() const

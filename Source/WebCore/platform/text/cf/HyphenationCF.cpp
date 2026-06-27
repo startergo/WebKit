@@ -32,6 +32,17 @@
 #include <wtf/text/StringView.h>
 #include <wtf/text/TextBreakIteratorInternalICU.h>
 
+// [leopard-webkit-build] CFStringIsHyphenationAvailableForLocale +
+// CFStringGetHyphenationLocationBeforeIndex are 10.7+ CoreFoundation hyphenation
+// APIs absent from the 10.6 SDK. sdk_stubs_605.mm supplies the definitions
+// (isHyphenationAvailable → false on 10.6; getHyphenationLocation → delegates to
+// the 10.6-era private SPI via wkGetHyphenationLocationBeforeIndex). Forward-declare
+// here so this TU compiles.
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1070
+extern "C" Boolean CFStringIsHyphenationAvailableForLocale(CFLocaleRef locale);
+extern "C" CFIndex CFStringGetHyphenationLocationBeforeIndex(CFStringRef string, CFIndex location, CFRange limitRange, CFOptionFlags options, CFLocaleRef locale, char *hyphenCharacters);
+#endif
+
 namespace WTF {
 
 template<>

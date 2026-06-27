@@ -614,9 +614,13 @@ void Adjuster::adjustForSiteSpecificQuirks(RenderStyle& style) const
 
             auto& div = downcast<HTMLDivElement>(*m_element);
             if (div.hasClass() && div.classNames().contains(instreamNativeVideoDivClass)) {
+#if ENABLE(VIDEO) // [leopard] LEOPARD_VIDEO_QUIRK: HTMLVideoElement is video-gated
                 auto* video = div.treeScope().getElementById(videoElementID);
                 if (is<HTMLVideoElement>(video) && downcast<HTMLVideoElement>(*video).isFullscreen())
                     style.setDisplay(DisplayType::Block);
+#else
+                UNUSED_PARAM(videoElementID);
+#endif
             }
         }
     }

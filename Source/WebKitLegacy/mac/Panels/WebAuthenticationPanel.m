@@ -78,7 +78,13 @@
     [[self retain] autorelease];
 
     if (usingSheet) {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         [panel.sheetParent endSheet:panel returnCode:NSModalResponseCancel];
+#else
+        // [leopard-webkit-build] NSWindow.sheetParent is 10.10+; on 10.6 end the
+        // sheet via NSApp (the classic modal-sheet API, 10.0+).
+        [NSApp endSheet:panel returnCode:NSModalResponseCancel];
+#endif
     } else {
         [panel orderOut:sender];
         [[NSApplication sharedApplication] stopModalWithCode:1];
@@ -94,7 +100,11 @@
     [[panel retain] autorelease];
 
     if (usingSheet) {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
         [panel.sheetParent endSheet:panel returnCode:NSModalResponseOK];
+#else
+        [NSApp endSheet:panel returnCode:NSModalResponseOK];
+#endif
     } else {
         [panel orderOut:sender];
         [[NSApplication sharedApplication] stopModalWithCode:0];

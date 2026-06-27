@@ -171,7 +171,12 @@ PlatformCAAnimationCocoa::PlatformCAAnimationCocoa(AnimationType type, const Str
         m_animation = [CAKeyframeAnimation animationWithKeyPath:keyPath];
         break;
     case Spring:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
         m_animation = [CASpringAnimation animationWithKeyPath:keyPath];
+#else
+        // [leopard] LEOPARD_NO_CASPRING: CASpringAnimation is 10.11+. Degrade to basic.
+        m_animation = [CABasicAnimation animationWithKeyPath:keyPath];
+#endif
         break;
     }
 }
@@ -179,9 +184,11 @@ PlatformCAAnimationCocoa::PlatformCAAnimationCocoa(AnimationType type, const Str
 PlatformCAAnimationCocoa::PlatformCAAnimationCocoa(PlatformAnimationRef animation)
 {
     if ([static_cast<CAAnimation*>(animation) isKindOfClass:[CABasicAnimation class]]) {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
         if ([static_cast<CAAnimation*>(animation) isKindOfClass:[CASpringAnimation class]])
             setType(Spring);
         else
+#endif
             setType(Basic);
     } else if ([static_cast<CAAnimation*>(animation) isKindOfClass:[CAKeyframeAnimation class]])
         setType(Keyframe);
@@ -323,6 +330,7 @@ void PlatformCAAnimationCocoa::setTimingFunction(const TimingFunction* value, bo
         [m_animation setTimingFunction:toCAMediaTimingFunction(value, reverse)];
         break;
     case Spring:
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
         if (value->isSpringTimingFunction()) {
             // FIXME: Handle reverse.
             auto& function = *static_cast<const SpringTimingFunction*>(value);
@@ -332,6 +340,9 @@ void PlatformCAAnimationCocoa::setTimingFunction(const TimingFunction* value, bo
             springAnimation.damping = function.damping();
             springAnimation.initialVelocity = function.initialVelocity();
         }
+#else
+        UNUSED_PARAM(value); UNUSED_PARAM(reverse);
+#endif
         break;
     }
 }

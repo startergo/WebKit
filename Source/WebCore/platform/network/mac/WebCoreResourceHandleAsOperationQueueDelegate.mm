@@ -59,6 +59,17 @@ static bool scheduledWithCustomRunLoopMode(const Optional<SchedulePairHashSet>& 
 
 - (void)callFunctionOnMainThread:(Function<void()>&&)function
 {
+    // [leopard] On 10.6, -[NSURLConnection setDelegateQueue:] does not actually deliver
+    // delegate callbacks on the background operation queue; they arrive on the main thread.
+    // The willSendRequest/didReceiveResponse pattern dispatches work to the main thread and
+    // then blocks on a semaphore waiting for it. If we are already on the main thread, that
+    // enqueue-and-wait deadlocks (the run loop can never drain the work while blocked on the
+    // semaphore). When already on the main thread, run the work synchronously instead.
+    if (isMainThread()) {
+        function();
+        return;
+    }
+
     // Sync xhr uses the message queue.
     if (m_messageQueue)
         return m_messageQueue->append(makeUnique<Function<void()>>(WTFMove(function)));

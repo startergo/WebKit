@@ -30,6 +30,19 @@
 
 #import "BlacklistUpdater.h"
 #import <OpenGL/OpenGL.h>
+
+// [leopard-webkit-build] kCGLRendererIDMatchingMask + kCGLCPSupportSeparateAddressSpace
+// are CGL constants absent from the 10.6 SDK's OpenGL headers. Provide them so the
+// WebGL GPU blacklist renderer-ID matching + separate-address-space probe compile.
+// Values per the modern CGLContext.h / CGLTypes.h.
+#ifndef kCGLRendererIDMatchingMask
+#define kCGLRendererIDMatchingMask 0x00FF
+#endif
+#ifndef kCGLCPSupportSeparateAddressSpace
+// Cast to the same type as kCGLCPCurrentRendererID (a CGL enum) so the value
+// matches CGLGetParameter's parameter type (no int→enum implicit conversion in C++).
+#define kCGLCPSupportSeparateAddressSpace ((__typeof__(kCGLCPCurrentRendererID))135)
+#endif
 #import <pal/spi/cf/CFUtilitiesSPI.h>
 
 namespace WebCore {
@@ -76,6 +89,10 @@ struct OSBuildInfo {
 
 static OSBuildInfo buildInfoFromOSBuildString(NSString *buildString)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+    // [leopard-webkit-build] NSRegularExpression + NSTextCheckingResult are 10.7+.
+    // On 10.6 return a default OSBuildInfo (the OS-build-based WebGL blacklist
+    // rules won't apply; the GPU/chassis rules still do via the other code paths).
     NSError *error = NULL;
     NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^(\\d+)([A-Z])(\\d+)" options:0 error:&error];
     NSArray *matches = [regex matchesInString:buildString options:0 range:NSMakeRange(0, [buildString length])];
@@ -100,6 +117,10 @@ static OSBuildInfo buildInfoFromOSBuildString(NSString *buildString)
     int buildVersion = [[buildString substringWithRange:[matchResult rangeAtIndex:3]] intValue];
 
     return OSBuildInfo(majorVersion, minorVersion, buildVersion);
+#else
+    UNUSED_PARAM(buildString);
+    return OSBuildInfo();
+#endif
 }
 
 bool WebGLBlacklist::shouldBlockWebGL()

@@ -28,7 +28,11 @@
 
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 
+#if defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED < 1070
+WEBCORE_EXPORT @interface WebActionDisablingCALayerDelegate : NSObject
+#else
 WEBCORE_EXPORT @interface WebActionDisablingCALayerDelegate : NSObject <CALayerDelegate>
+#endif
 
 + (instancetype)shared;
 

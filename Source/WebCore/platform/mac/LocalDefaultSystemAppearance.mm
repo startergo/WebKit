@@ -27,7 +27,9 @@
 
 #if USE(APPKIT)
 
+#if HAVE(OS_DARK_MODE_SUPPORT)
 #import <AppKit/NSAppearance.h>
+#endif
 
 namespace WebCore {
 

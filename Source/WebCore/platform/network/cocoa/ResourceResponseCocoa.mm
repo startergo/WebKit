@@ -64,7 +64,16 @@ void ResourceResponse::initNSURLResponse() const
     for (auto& header : m_httpHeaderFields)
         [headerDictionary setObject:(NSString *)header.value forKey:(NSString *)header.key];
 
-    m_nsResponse = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_url statusCode:m_httpStatusCode HTTPVersion:(NSString*)kCFHTTPVersion1_1 headerFields:headerDictionary]);
+    // [leopard] The public initWithURL:statusCode:HTTPVersion:headerFields: is 10.7+.
+    // On 10.6, use the private initWithURL:statusCode:headerFields:requestTime: SPI.
+    // Without a proper NSHTTPURLResponse, CORS checks reject cross-origin redirects
+    // (e.g. github.githubassets.com CSS/JS assets fail to load -> unstyled page).
+    if ([NSHTTPURLResponse instancesRespondToSelector:@selector(initWithURL:statusCode:HTTPVersion:headerFields:)])
+        m_nsResponse = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_url statusCode:m_httpStatusCode HTTPVersion:(NSString*)kCFHTTPVersion1_1 headerFields:headerDictionary]);
+    else if ([NSHTTPURLResponse instancesRespondToSelector:@selector(initWithURL:statusCode:headerFields:requestTime:)])
+        m_nsResponse = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_url statusCode:m_httpStatusCode headerFields:headerDictionary requestTime:0]);
+    else
+        m_nsResponse = adoptNS([[NSHTTPURLResponse alloc] initWithURL:m_url MIMEType:m_mimeType expectedContentLength:static_cast<NSInteger>(m_expectedContentLength) textEncodingName:nsStringNilIfEmpty(m_textEncodingName)]);
 
     // Mime type sniffing doesn't work with a synthesized response.
     [m_nsResponse.get() _setMIMEType:(NSString *)m_mimeType];
@@ -91,6 +100,7 @@ CertificateInfo ResourceResponse::platformCertificateInfo() const
     auto trust = checked_cf_cast<SecTrustRef>(trustValue);
 
     SecTrustResultType trustResultType;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     OSStatus result = SecTrustGetTrustResult(trust, &trustResultType);
     if (result != errSecSuccess)
         return { };
@@ -99,6 +109,14 @@ CertificateInfo ResourceResponse::platformCertificateInfo() const
         if (!SecTrustEvaluateWithError(trust, nullptr))
             return { };
     }
+#else
+    /* [leopard] SecTrustGetTrustResult (10.7+) / SecTrustEvaluateWithError (10.12+) are
+       unavailable on 10.6; use the original SecTrustEvaluate which both validates and
+       returns the result type. */
+    OSStatus result = SecTrustEvaluate(trust, &trustResultType);
+    if (result != errSecSuccess)
+        return { };
+#endif
 
 #if HAVE(SEC_TRUST_SERIALIZATION)
     return CertificateInfo(trust);

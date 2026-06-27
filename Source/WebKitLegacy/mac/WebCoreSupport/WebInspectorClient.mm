@@ -221,9 +221,11 @@ void WebInspectorFrontendClient::startWindowDrag()
     [[m_frontendWindowController window] performWindowDragWithEvent:[NSApp currentEvent]];
 }
 
+static NSBundle *webInspectorUIBundle();
+
 String WebInspectorFrontendClient::localizedStringsURL() const
 {
-    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    NSBundle *bundle = webInspectorUIBundle();
     if (!bundle)
         return String();
 
@@ -231,7 +233,7 @@ String WebInspectorFrontendClient::localizedStringsURL() const
     if (!path.length)
         return String();
     
-    return [NSURL fileURLWithPath:path isDirectory:NO].absoluteString;
+    return [(NSURL *)[NSURL fileURLWithPath:path isDirectory:NO] absoluteString];
 }
 
 void WebInspectorFrontendClient::bringToFront()
@@ -274,6 +276,7 @@ void WebInspectorFrontendClient::setForcedAppearance(InspectorFrontendClient::Ap
     NSWindow *window = [m_frontendWindowController window];
     ASSERT(window);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     switch (appearance) {
     case InspectorFrontendClient::Appearance::System:
         window.appearance = nil;
@@ -287,6 +290,10 @@ void WebInspectorFrontendClient::setForcedAppearance(InspectorFrontendClient::Ap
         window.appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
         break;
     }
+#else
+    /* [leopard] NSWindow.appearance / NSAppearanceName* are 10.9+/10.14; no-op on 10.6. */
+    UNUSED_PARAM(appearance);
+#endif
 }
 
 bool WebInspectorFrontendClient::supportsDockSide(DockSide dockSide)
@@ -529,9 +536,29 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 // MARK: -
 
+static NSBundle *webInspectorUIBundle()
+{
+    // [leopard] +[NSBundle bundleWithIdentifier:] only finds ALREADY-LOADED bundles.
+    // In the injected-framework setup the WebInspectorUI bundle is not registered, so
+    // bundleWithIdentifier: returns nil -> inspectorPagePath returns nil -> the
+    // Inspector tries [NSURL fileURLWithPath:nil] and throws (Inspector never opens).
+    // Locate the framework by path: it is a sibling of WebKitLegacy.framework in the
+    // same Frameworks/<ver> directory, so load it relative to this code's bundle.
+    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    if (bundle)
+        return bundle;
+
+    NSString *frameworksDir = [[NSBundle bundleForClass:[WebInspectorWindowController class]] bundlePath].stringByDeletingLastPathComponent;
+    NSString *uiPath = [frameworksDir stringByAppendingPathComponent:@"WebInspectorUI.framework"];
+    bundle = [NSBundle bundleWithPath:uiPath];
+    if (bundle && ![bundle isLoaded])
+        [bundle load];
+    return bundle;
+}
+
 - (NSString *)inspectorPagePath
 {
-    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    NSBundle *bundle = webInspectorUIBundle();
     if (!bundle)
         return nil;
 
@@ -540,7 +567,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 - (NSString *)inspectorTestPagePath
 {
-    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    NSBundle *bundle = webInspectorUIBundle();
     if (!bundle)
         return nil;
 
@@ -569,10 +596,18 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
     CGFloat approximatelyHalfScreenSize = (window.screen.frame.size.width / 2) - 4;
     CGFloat minimumFullScreenWidth = std::max<CGFloat>(636, approximatelyHalfScreenSize);
-    [window setMinFullScreenContentSize:NSMakeSize(minimumFullScreenWidth, minimumWindowHeight)];
+    // [leopard] -[NSWindow setMinFullScreenContentSize:] is 10.11+; unrecognized
+    // selector on 10.6 (crashes when the Inspector frontend configures its window).
+    if ([window respondsToSelector:@selector(setMinFullScreenContentSize:)])
+        [window setMinFullScreenContentSize:NSMakeSize(minimumFullScreenWidth, minimumWindowHeight)];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
+    // [leopard-webkit-build] NSWindowCollectionBehaviorFullScreenAllowsTiling +
+    // titlebarAppearsTransparent are 10.10+; on < 10.10 skip (inspector window just
+    // uses standard collection behavior + opaque titlebar).
     [window setCollectionBehavior:([window collectionBehavior] | NSWindowCollectionBehaviorFullScreenAllowsTiling)];
 
     window.titlebarAppearsTransparent = YES;
+#endif
 
     [self setWindow:window];
     [window release];

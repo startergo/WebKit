@@ -63,6 +63,7 @@
 - (NSURL *)_webkit_canonicalize_with_wtf;
 - (NSURL *)_webkit_URLByRemovingFragment;
 - (NSURL *)_web_URLByRemovingUserInfo;
+- (NSURL *)_web_URLWithLowercasedScheme;
 
 - (BOOL)_webkit_isJavaScriptURL;
 - (BOOL)_webkit_isFileURL;
