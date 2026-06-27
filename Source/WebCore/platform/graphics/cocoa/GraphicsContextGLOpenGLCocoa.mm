@@ -213,6 +213,8 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
 #else
     if (m_isForWebGL2)
         m_compiler = ANGLEWebKitBridge(SH_GLSL_410_CORE_OUTPUT, SH_WEBGL2_SPEC);
+    else
+        m_compiler = ANGLEWebKitBridge(SH_GLSL_COMPATIBILITY_OUTPUT, SH_WEBGL_SPEC);
 #endif // USE(OPENGL_ES)
 #endif // !USE(ANGLE)
 
