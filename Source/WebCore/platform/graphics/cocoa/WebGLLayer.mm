@@ -160,14 +160,25 @@ static void freeData(void *, const void *data, size_t /* size */)
     if (!data)
         return nullptr;
 
-    _context->readRenderingResultsForSnapshot(data, dataSize);
+    GLint savedFBO = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &savedFBO);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _context->getInternalFramebuffer());
+    GLint savedPackRow = 0, savedPackAlign = 0;
+    glGetIntegerv(GL_PACK_ROW_LENGTH, &savedPackRow);
+    glGetIntegerv(GL_PACK_ALIGNMENT, &savedPackAlign);
+    glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+    glPixelStorei(GL_PACK_ROW_LENGTH, savedPackRow);
+    glPixelStorei(GL_PACK_ALIGNMENT, savedPackAlign);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
     {
         unsigned* px = (unsigned*)data;
         size_t total = width * height;
         size_t mid = (height/2) * width + (width/2);
         unsigned nonzero = 0;
         for (size_t i = 0; i < total; ++i) if (px[i] & 0x00ffffff) { nonzero++; }
-        WTFLogAlways("[leopard-webgl] snapshot2: %zux%zu antialias=%d midPixel=0x%08x nonzeroRGB=%u/%zu", width, height, (int)_context->contextAttributes().antialias, px[mid], nonzero, total);
+        WTFLogAlways("[leopard-webgl] snapshot3: %zux%zu directFBO=%u midPixel=0x%08x nonzeroRGB=%u/%zu", width, height, _context->getInternalFramebuffer(), px[mid], nonzero, total);
     }
 
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
