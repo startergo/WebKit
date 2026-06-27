@@ -148,41 +148,39 @@ static void freeData(void *, const void *data, size_t /* size */)
     if (!imageColorSpace)
         imageColorSpace = WebCore::sRGBColorSpaceRef();
 
-    WebCore::IntSize fbSize = _context->getInternalFramebufferSize();
-    size_t width = fbSize.width();
-    size_t height = fbSize.height();
-    if (!width || !height)
+    glFinish();
+
+    if (!_drawingBuffer)
+        return nullptr;
+    IOSurfaceRef surf = _drawingBuffer->surface();
+    if (!surf)
         return nullptr;
 
-    size_t rowBytes = width * 4;
-    size_t dataSize = rowBytes * height;
+    IOSurfaceLock(surf, kIOSurfaceLockReadOnly, nullptr);
+    size_t sWidth = IOSurfaceGetWidth(surf);
+    size_t sHeight = IOSurfaceGetHeight(surf);
+    size_t sRowBytes = IOSurfaceGetBytesPerRow(surf);
+    void* sBase = IOSurfaceGetBaseAddress(surf);
+
+    size_t dataSize = sRowBytes * sHeight;
     unsigned char* data = static_cast<unsigned char*>(fastMalloc(dataSize));
-    if (!data)
+    if (!data) {
+        IOSurfaceUnlock(surf, kIOSurfaceLockReadOnly, nullptr);
         return nullptr;
-
-    GLint savedFBO = 0;
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &savedFBO);
-    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, _context->getInternalFramebuffer());
-    GLint savedPackRow = 0, savedPackAlign = 0;
-    glGetIntegerv(GL_PACK_ROW_LENGTH, &savedPackRow);
-    glGetIntegerv(GL_PACK_ALIGNMENT, &savedPackAlign);
-    glPixelStorei(GL_PACK_ROW_LENGTH, 0);
-    glPixelStorei(GL_PACK_ALIGNMENT, 4);
-    glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
-    glPixelStorei(GL_PACK_ROW_LENGTH, savedPackRow);
-    glPixelStorei(GL_PACK_ALIGNMENT, savedPackAlign);
-    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, savedFBO);
+    }
+    memcpy(data, sBase, dataSize);
+    IOSurfaceUnlock(surf, kIOSurfaceLockReadOnly, nullptr);
     {
         unsigned* px = (unsigned*)data;
-        size_t total = width * height;
-        size_t mid = (height/2) * width + (width/2);
+        size_t total = sWidth * sHeight;
+        size_t mid = (sHeight/2) * (sRowBytes/4) + (sWidth/2);
         unsigned nonzero = 0;
         for (size_t i = 0; i < total; ++i) if (px[i] & 0x00ffffff) { nonzero++; }
-        WTFLogAlways("[leopard-webgl] snapshot3: %zux%zu directFBO=%u midPixel=0x%08x nonzeroRGB=%u/%zu", width, height, _context->getInternalFramebuffer(), px[mid], nonzero, total);
+        WTFLogAlways("[leopard-webgl] iosurf: %zux%zu rowBytes=%zu midPixel=0x%08x nonzeroRGB=%u/%zu", sWidth, sHeight, sRowBytes, px[mid], nonzero, total);
     }
 
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
-    CGImageRef image = CGImageCreate(width, height, 8, 32, rowBytes, imageColorSpace.get(),
+    CGImageRef image = CGImageCreate(sWidth, sHeight, 8, 32, sRowBytes, imageColorSpace.get(),
         kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host, provider, 0, true, kCGRenderingIntentDefault);
     CGDataProviderRelease(provider);
     return image;
