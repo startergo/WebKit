@@ -161,12 +161,6 @@ static void freeData(void *, const void *data, size_t /* size */)
         return nullptr;
 
     _context->readViaCopyTexImage(data, (int)width, (int)height);
-    {
-        size_t total = width * height;
-        unsigned nz = 0;
-        for (size_t i = 0; i < total; ++i) if (((unsigned*)data)[i] & 0x00ffffff) nz++;
-        WTFLogAlways("[leopard-webgl] snap: %zux%zu nonzeroRGB=%u/%zu", width, height, nz, total);
-    }
 
     CGDataProviderRef provider = CGDataProviderCreateWithData(0, data, dataSize, freeData);
     CGImageRef image = CGImageCreate(width, height, 8, 32, rowBytes, imageColorSpace.get(),

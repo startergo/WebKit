@@ -560,8 +560,6 @@ GraphicsContextGLOpenGL::GraphicsContextGLOpenGL(GraphicsContextGLAttributes att
     getShaderPrecisionFormat(GraphicsContextGL::FRAGMENT_SHADER, GraphicsContextGL::HIGH_FLOAT, range, &precision);
     ANGLEResources.FragmentPrecisionHigh = (range[0] || range[1] || precision);
 
-    WTFLogAlways("[leopard-webgl] ANGLEResources: MaxVertAttribs=%d MaxVertUniform=%d MaxVarying=%d MaxVertTex=%d MaxCombTex=%d MaxTex=%d MaxFragUniform=%d FragPrecHigh=%d", ANGLEResources.MaxVertexAttribs, ANGLEResources.MaxVertexUniformVectors, ANGLEResources.MaxVaryingVectors, ANGLEResources.MaxVertexTextureImageUnits, ANGLEResources.MaxCombinedTextureImageUnits, ANGLEResources.MaxTextureImageUnits, ANGLEResources.MaxFragmentUniformVectors, ANGLEResources.FragmentPrecisionHigh);
-
     m_compiler.setResources(ANGLEResources);
 #endif // !USE(ANGLE)
     

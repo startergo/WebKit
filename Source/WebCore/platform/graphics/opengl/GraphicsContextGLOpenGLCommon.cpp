@@ -654,12 +654,8 @@ void GraphicsContextGLOpenGL::compileShader(PlatformGLObject shader)
     m_compiler.setResources(ANGLEResources);
     setCurrentNameHashMapForShader(nullptr);
 
-    WTFLogAlways("[leopard-webgl] compileShader %u: origLen=%u translatedLen=%u", shader, (unsigned)getShaderSource(shader).length(), (unsigned)translatedShaderSource.length());
-
-    if (!translatedShaderSource.length()) {
-        WTFLogAlways("[leopard-webgl] compileShader %u: EMPTY TRANSLATION - bailing!", shader);
+    if (!translatedShaderSource.length())
         return;
-    }
 
     const CString& translatedShaderCString = translatedShaderSource.utf8();
     const char* translatedShaderPtr = translatedShaderCString.data();
@@ -675,7 +671,6 @@ void GraphicsContextGLOpenGL::compileShader(PlatformGLObject shader)
     int compileStatus;
     
     ::glGetShaderiv(shader, COMPILE_STATUS, &compileStatus);
-    WTFLogAlways("[leopard-webgl] compileShader %u: compileStatus=%d", shader, compileStatus);
 
     ShaderSourceMap::iterator result = m_shaderSourceMap.find(shader);
     ShaderSourceEntry& entry = result->value;
@@ -816,16 +811,6 @@ void GraphicsContextGLOpenGL::disableVertexAttribArray(GCGLuint index)
 void GraphicsContextGLOpenGL::drawArrays(GCGLenum mode, GCGLint first, GCGLsizei count)
 {
     makeContextCurrent();
-    {
-        static int dc = 0;
-        if (dc++ < 4) {
-            GLint bf = 0, vp[4] = {0,0,0,0}, prog = 0;
-            ::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &bf);
-            ::glGetIntegerv(GL_VIEWPORT, vp);
-            ::glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
-            WTFLogAlways("[leopard-webgl] drawArrays: mode=0x%x count=%d boundFBO=%d m_fbo=%u m_msFBO=%u prog=%d vp=%d,%d,%d,%d err=0x%x", mode, count, bf, m_fbo, m_multisampleFBO, prog, vp[0],vp[1],vp[2],vp[3], ::glGetError());
-        }
-    }
     ::glDrawArrays(mode, first, count);
     checkGPUStatus();
 }
@@ -833,26 +818,6 @@ void GraphicsContextGLOpenGL::drawArrays(GCGLenum mode, GCGLint first, GCGLsizei
 void GraphicsContextGLOpenGL::drawElements(GCGLenum mode, GCGLsizei count, GCGLenum type, GCGLintptr offset)
 {
     makeContextCurrent();
-    {
-        static int dc = 0;
-        if (dc++ < 4) {
-            GLint bf = 0, vp[4] = {0,0,0,0}, prog = 0;
-            ::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &bf);
-            ::glGetIntegerv(GL_VIEWPORT, vp);
-            ::glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
-            WTFLogAlways("[leopard-webgl] drawElements: realFBO=%d m_state.boundDrawFBO=%u m_fbo=%u m_msFBO=%u aa=%d prog=%d vp=%d,%d,%d,%d", bf, m_state.boundDrawFBO, m_fbo, m_multisampleFBO, (int)contextAttributes().antialias, prog, vp[0],vp[1],vp[2],vp[3]);
-        }
-    }
-    {
-        static int drawCount = 0;
-        if (drawCount++ < 3) {
-            GLint boundFBO = 0, vp[4] = {0,0,0,0};
-            ::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &boundFBO);
-            ::glGetIntegerv(GL_VIEWPORT, vp);
-            GLenum preErr = ::glGetError();
-            WTFLogAlways("[leopard-webgl] drawElements: mode=0x%x count=%d boundFBO=%d m_fbo=%u m_msFBO=%u viewport=%d,%d,%d,%d preErr=0x%x", mode, count, boundFBO, m_fbo, m_multisampleFBO, vp[0],vp[1],vp[2],vp[3], preErr);
-        }
-    }
     ::glDrawElements(mode, count, type, reinterpret_cast<GLvoid*>(static_cast<intptr_t>(offset)));
     checkGPUStatus();
 }

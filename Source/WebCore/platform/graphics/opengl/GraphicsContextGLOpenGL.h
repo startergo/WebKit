@@ -605,9 +605,6 @@ public:
     GCGLuint getInternalFramebuffer() const { return m_fbo; }
     void readRenderingResultsForSnapshot(unsigned char* pixels, int pixelsSize) { readRenderingResults(pixels, pixelsSize); }
     void readViaCopyTexImage(unsigned char* pixels, int width, int height);
-    GCGLuint dbgMSFBO() const { return m_multisampleFBO; }
-    GCGLuint dbgFBO() const { return m_fbo; }
-    bool dbgAA() const { return contextAttributes().antialias; }
 
     // Packs the contents of the given Image which is passed in |pixels| into the passed Vector
     // according to the given format and type, and obeying the flipY and AlphaOp flags.

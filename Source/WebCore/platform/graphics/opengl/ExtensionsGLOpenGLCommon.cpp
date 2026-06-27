@@ -198,8 +198,6 @@ String ExtensionsGLOpenGLCommon::getTranslatedShaderSourceANGLE(PlatformGLObject
     Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>> symbols;
     bool isValid = compiler.compileShaderSource(entry.source.utf8().data(), shaderType, translatedShaderSource, shaderInfoLog, symbols, extraCompileOptions);
 
-    WTFLogAlways("[leopard-webgl] ANGLE compile: type=%d isValid=%d translatedLen=%u log=[%s]", (int)shaderType, (int)isValid, (unsigned)translatedShaderSource.length(), shaderInfoLog.utf8().data());
-
     entry.log = shaderInfoLog;
     entry.isValid = isValid;
 
