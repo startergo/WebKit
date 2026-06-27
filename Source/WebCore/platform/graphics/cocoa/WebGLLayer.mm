@@ -181,12 +181,17 @@ static void freeData(void *, const void *data, size_t /* size */)
         return;
 
 #if USE(OPENGL)
+    WTFLogAlways("[leopard-webgl] WebGLLayer display: drawingBuffer=%p", _drawingBuffer.get());
     _context->prepareTexture();
     if (_drawingBuffer) {
         std::swap(_contentsBuffer, _drawingBuffer);
-        self.contents = _contentsBuffer->asLayerContents();
+        id layerContents = _contentsBuffer->asLayerContents();
+        WTFLogAlways("[leopard-webgl] WebGLLayer display: setting contents=%p", layerContents);
+        self.contents = layerContents;
         [self reloadValueForKeyPath:@"contents"];
         [self bindFramebufferToNextAvailableSurface];
+    } else {
+        WTFLogAlways("[leopard-webgl] WebGLLayer display: NO drawingBuffer, nothing to show");
     }
 #elif USE(OPENGL_ES)
     _context->presentRenderbuffer();
