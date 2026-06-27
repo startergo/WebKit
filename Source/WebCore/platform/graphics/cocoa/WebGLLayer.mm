@@ -160,7 +160,7 @@ static void freeData(void *, const void *data, size_t /* size */)
     if (!data)
         return nullptr;
 
-    _context->readRenderingResults(data, dataSize);
+    _context->readRenderingResultsForSnapshot(data, dataSize);
     {
         unsigned* px = (unsigned*)data;
         size_t total = width * height;

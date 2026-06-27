@@ -603,6 +603,7 @@ public:
 
     IntSize getInternalFramebufferSize() const;
     GCGLuint getInternalFramebuffer() const { return m_fbo; }
+    void readRenderingResultsForSnapshot(unsigned char* pixels, int pixelsSize) { readRenderingResults(pixels, pixelsSize); }
 
     // Packs the contents of the given Image which is passed in |pixels| into the passed Vector
     // according to the given format and type, and obeying the flipY and AlphaOp flags.
