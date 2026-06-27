@@ -840,7 +840,7 @@ void GraphicsContextGLOpenGL::drawElements(GCGLenum mode, GCGLsizei count, GCGLe
             ::glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &bf);
             ::glGetIntegerv(GL_VIEWPORT, vp);
             ::glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
-            WTFLogAlways("[leopard-webgl] drawElements: mode=0x%x count=%d boundFBO=%d m_fbo=%u m_msFBO=%u prog=%d vp=%d,%d,%d,%d err=0x%x", mode, count, bf, m_fbo, m_multisampleFBO, prog, vp[0],vp[1],vp[2],vp[3], ::glGetError());
+            WTFLogAlways("[leopard-webgl] drawElements: realFBO=%d m_state.boundDrawFBO=%u m_fbo=%u m_msFBO=%u aa=%d prog=%d vp=%d,%d,%d,%d", bf, m_state.boundDrawFBO, m_fbo, m_multisampleFBO, (int)contextAttributes().antialias, prog, vp[0],vp[1],vp[2],vp[3]);
         }
     }
     {
