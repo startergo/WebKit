@@ -50,6 +50,12 @@
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
 #import <wtf/BlockObjCExceptions.h>
+
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 1070
+@interface CALayer (LeopardContentsScaleCompat)
+@property CGFloat contentsScale;
+@end
+#endif
 #import <wtf/RetainPtr.h>
 #import <wtf/cocoa/VectorCocoa.h>
 
@@ -919,17 +925,18 @@ void PlatformCALayerCocoa::setTimeOffset(CFTimeInterval value)
 
 float PlatformCALayerCocoa::contentsScale() const
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
-    return [m_layer contentsScale];
-#else
+    if ([m_layer respondsToSelector:@selector(contentsScale)])
+        return [m_layer contentsScale];
     return 1; /* [leopard] CALayer.contentsScale is 10.7+; no HiDPI on 10.6 */
-#endif
 }
 
 void PlatformCALayerCocoa::setContentsScale(float value)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS
-    [m_layer setContentsScale:value];
+    if ([m_layer respondsToSelector:@selector(setContentsScale:)])
+        [m_layer setContentsScale:value];
+    else
+        UNUSED_PARAM(value); /* [leopard] CALayer.setContentsScale: is 10.7+; absent on 10.6 */
 #if PLATFORM(IOS_FAMILY)
     [m_layer setRasterizationScale:value];
 #endif
