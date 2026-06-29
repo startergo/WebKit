@@ -301,7 +301,7 @@ public:
             values = [decoder decodeObjectForKey:@"Values"];
         } else {
             int version;
-            [decoder decodeValueOfObjCType:@encode(int) at:&version size:sizeof(int)];
+            [decoder decodeValueOfObjCType:@encode(int) at:&version]; /* [leopard] 2-arg form; 3-arg decodeValueOfObjCType:at:size: is 10.8+ and crashes NSUnarchiver NIB decode on 10.6 */
             if (version == 1) {
                 identifier = [decoder decodeObject];
                 values = [decoder decodeObject];
