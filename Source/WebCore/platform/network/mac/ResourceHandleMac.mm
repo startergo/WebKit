@@ -215,14 +215,19 @@ void ResourceHandle::createNSURLConnection(id delegate, bool shouldUseCredential
     NSMutableDictionary *propertyDictionary = [NSMutableDictionary dictionaryWithObject:streamProperties forKey:@"kCFURLConnectionSocketStreamProperties"];
     const bool usesCache = true;
 #endif
-    [propertyDictionary setObject:@{@"_kCFURLConnectionPropertyTimingDataOptions": @(_TimingDataOptionsEnableW3CNavigationTiming)} forKey:@"kCFURLConnectionURLConnectionProperties"];
+    if (kCFCoreFoundationVersionNumber >= 600) {
+        [propertyDictionary setObject:@{@"_kCFURLConnectionPropertyTimingDataOptions": @(_TimingDataOptionsEnableW3CNavigationTiming)} forKey:@"kCFURLConnectionURLConnectionProperties"];
 
-    // This is used to signal that to CFNetwork that this connection should be considered
-    // web content for purposes of App Transport Security.
-    [propertyDictionary setObject:@{@"NSAllowsArbitraryLoadsInWebContent": @YES} forKey:@"_kCFURLConnectionPropertyATSFrameworkOverrides"];
+        // This is used to signal that to CFNetwork that this connection should be considered
+        // web content for purposes of App Transport Security.
+        [propertyDictionary setObject:@{@"NSAllowsArbitraryLoadsInWebContent": @YES} forKey:@"_kCFURLConnectionPropertyATSFrameworkOverrides"];
+    }
 
 ALLOW_DEPRECATED_DECLARATIONS_BEGIN
-    d->m_connection = adoptNS([[NSURLConnection alloc] _initWithRequest:nsRequest delegate:delegate usesCache:usesCache maxContentLength:0 startImmediately:NO connectionProperties:propertyDictionary]);
+    if (kCFCoreFoundationVersionNumber < 600)
+        d->m_connection = adoptNS([[NSURLConnection alloc] initWithRequest:nsRequest delegate:delegate startImmediately:NO]);
+    else
+        d->m_connection = adoptNS([[NSURLConnection alloc] _initWithRequest:nsRequest delegate:delegate usesCache:usesCache maxContentLength:0 startImmediately:NO connectionProperties:propertyDictionary]);
 ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
@@ -263,8 +268,15 @@ bool ResourceHandle::start()
         (NSDictionary *)client()->connectionProperties(this).get());
 #endif
 
-    [connection() setDelegateQueue:operationQueueForAsyncClients()];
-    [connection() start];
+    if (kCFCoreFoundationVersionNumber < 600) {
+        // [leopard] setDelegateQueue: is 10.7+. On 10.6 schedule the connection in
+        // the current run loop so delegate callbacks are delivered.
+        [connection() scheduleInRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+        [connection() start];
+    } else {
+        [connection() setDelegateQueue:operationQueueForAsyncClients()];
+        [connection() start];
+    }
 
     LOG(Network, "Handle %p starting connection %p for %@", this, connection(), firstRequest().nsURLRequest(HTTPBodyUpdatePolicy::DoNotUpdateHTTPBody));
     
@@ -391,8 +403,13 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
         (NSDictionary *)handle->client()->connectionProperties(handle.get()).get());
 #endif
 
-    [handle->connection() setDelegateQueue:operationQueueForAsyncClients()];
-    [handle->connection() start];
+    if (kCFCoreFoundationVersionNumber < 600) {
+        [handle->connection() scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
+        [handle->connection() start];
+    } else {
+        [handle->connection() setDelegateQueue:operationQueueForAsyncClients()];
+        [handle->connection() start];
+    }
     
     do {
         if (auto task = client.messageQueue().waitForMessage())
