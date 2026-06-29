@@ -104,7 +104,12 @@
 #endif
 
 #if PLATFORM(MAC)
-#define USE_PLUGIN_HOST_PROCESS 1
+/* [leopard] Out-of-process NPAPI plugin host is not built on the 10.6 port:
+ * Plugins/Hosted/*.mm are not compiled and WebKitPluginHost.app is not
+ * produced. Disable so USE(PLUGIN_HOST_PROCESS) callers compile out and the
+ * framework links without undefined NetscapePluginHostManager symbols (the
+ * cause of a dyld SIGTRAP at load). In-process NPAPI plugins are unaffected. */
+#define USE_PLUGIN_HOST_PROCESS 0
 #endif
 
 #if PLATFORM(IOS_FAMILY)
