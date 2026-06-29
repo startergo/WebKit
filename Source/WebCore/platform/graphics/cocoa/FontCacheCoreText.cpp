@@ -663,7 +663,7 @@ RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, const FontDescr
             if (fontType.openTypeShaping)
                 appendOpenTypeFeature(featureArray.get(), feature);
         }
-        if (CFArrayGetCount(featureArray.get()))
+        if (CFArrayGetCount(featureArray.get()) && kCFCoreFoundationVersionNumber >= 600)
             CFDictionaryAddValue(attributes.get(), kCTFontFeatureSettingsAttribute, featureArray.get());
     }
 
