@@ -48,6 +48,17 @@ public:
     {
     }
 
+#ifdef LEOPARD_WEBKIT
+    // [leopard] 10.6: store a validated CGFont and realize via
+    // CTFontCreateWithGraphicsFont, avoiding the fragile descriptor->font
+    // path that SIGBUSes in CGFontNameTableCreate on Snow Leopard.
+    FontCustomPlatformData(CTFontDescriptorRef fontDescriptor, CGFontRef cgFont)
+        : m_fontDescriptor(fontDescriptor)
+        , m_cgFont(cgFont)
+    {
+    }
+#endif
+
     ~FontCustomPlatformData();
 
     FontPlatformData fontPlatformData(const FontDescription&, bool bold, bool italic, const FontFeatureSettings& fontFaceFeatures, FontSelectionSpecifiedCapabilities fontFaceCapabilities);
@@ -55,6 +66,9 @@ public:
     static bool supportsFormat(const String&);
 
     RetainPtr<CTFontDescriptorRef> m_fontDescriptor;
+#ifdef LEOPARD_WEBKIT
+    RetainPtr<CGFontRef> m_cgFont;
+#endif
 };
 
 std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer&, const String&);

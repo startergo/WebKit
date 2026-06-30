@@ -45,7 +45,13 @@ FontPlatformData FontCustomPlatformData::fontPlatformData(const FontDescription&
     int size = fontDescription.computedPixelSize();
     FontOrientation orientation = fontDescription.orientation();
     FontWidthVariant widthVariant = fontDescription.widthVariant();
-    RetainPtr<CTFontRef> font = adoptCF(CTFontCreateWithFontDescriptor(modifiedFontDescriptor.get(), size, nullptr));
+    RetainPtr<CTFontRef> font;
+#ifdef LEOPARD_WEBKIT
+    if (m_cgFont)
+        font = adoptCF(CTFontCreateWithGraphicsFont(m_cgFont.get(), size, nullptr, modifiedFontDescriptor.get()));
+    else
+#endif
+    font = adoptCF(CTFontCreateWithFontDescriptor(modifiedFontDescriptor.get(), size, nullptr));
     font = preparePlatformFont(font.get(), fontDescription, &fontFaceFeatures, fontFaceCapabilities);
     ASSERT(font);
     return FontPlatformData(font.get(), size, bold, italic, orientation, widthVariant, fontDescription.textRenderingMode());
@@ -85,6 +91,25 @@ std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffe
         return nullptr;
 #endif
 
+#ifdef LEOPARD_WEBKIT
+    // [leopard] Build the CGFont up front and force the name-table walk now,
+    // where a failure is a clean nullptr bail instead of a SIGBUS inside
+    // CGFontNameTableCreate during deferred descriptor realization.
+    {
+        RetainPtr<CGDataProviderRef> provider = adoptCF(CGDataProviderCreateWithCFData(bufferData.get()));
+        if (!provider)
+            return nullptr;
+        RetainPtr<CGFontRef> cgFont = adoptCF(CGFontCreateWithDataProvider(provider.get()));
+        if (!cgFont)
+            return nullptr;
+        // Validate: a font whose PostScript name cannot be copied has a
+        // broken/empty name table and will crash CoreText on 10.6.
+        RetainPtr<CFStringRef> psName = adoptCF(CGFontCopyPostScriptName(cgFont.get()));
+        if (!psName)
+            return nullptr;
+        return makeUnique<FontCustomPlatformData>(fontDescriptor.get(), cgFont.get());
+    }
+#endif
     return makeUnique<FontCustomPlatformData>(fontDescriptor.get());
 }
 
