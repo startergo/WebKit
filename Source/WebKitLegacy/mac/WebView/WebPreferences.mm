@@ -486,15 +486,12 @@ public:
         @YES, WebKitZoomsTextOnlyPreferenceKey,
         @NO, WebKitJavaScriptCanAccessClipboardPreferenceKey,
         @YES, WebKitXSSAuditorEnabledPreferenceKey,
-#if defined(LEOPARD_WEBKIT)
-        // [leopard] CoreAnimation accelerated compositing is fragile on 10.6's CALayer surface
-        // (post-10.6 CA selectors in layer init -> SIGTRAP) and pointless on the software-only
-        // QEMU GPU. Default OFF so the proven software rendering path is used. WebGL uses the
-        // ContentsProvided/ANGLE path, not root CA compositing.
-        @NO, WebKitAcceleratedCompositingEnabledPreferenceKey,
-#else
+        // [leopard] Accelerated compositing ON: required for WebGL canvas
+        // presentation on real hardware (NVIDIA 9400). Confirmed stable on
+        // 10.6.8 metal across heavy pages and WebGL. (The post-10.6 CALayer
+        // SIGTRAP this previously guarded against does not reproduce on real
+        // hardware; it was a software/QEMU-GPU concern.)
         @YES, WebKitAcceleratedCompositingEnabledPreferenceKey,
-#endif
 #if PLATFORM(MAC)
 #define DEFAULT_SUBPIXEL_ANTIALIASED_LAYER_TEXT_ENABLED YES
 #else
