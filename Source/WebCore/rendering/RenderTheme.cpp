@@ -297,6 +297,15 @@ bool RenderTheme::paint(const RenderBox& box, ControlStates& controlStates, cons
     if (UNLIKELY(!paintInfo.context().hasPlatformContext()))
         return false;
 
+#ifdef LEOPARD_WEBKIT
+    // [leopard] Native Aqua control cell drawing (NSCell/NSBezierPath ->
+    // CGContextSaveGState) SIGBUSes in real 10.6 CoreGraphics on this hardware
+    // (x_list_prepend_, image_base+8). Skip native theming entirely; the
+    // control's CSS background/border from box decorations still paints, so
+    // controls remain visible and interactive, just without Aqua chrome.
+    return true;
+#endif
+
     ControlPart part = box.style().appearance();
     IntRect integralSnappedRect = snappedIntRect(rect);
     float deviceScaleFactor = box.document().deviceScaleFactor();
