@@ -193,7 +193,13 @@ static void freeData(void *, const void *data, size_t /* size */)
     // FBO. Read it back into a CGImage, which 10.6 CoreAnimation accepts as
     // layer contents (raw IOSurface contents is a 10.7+ capability).
     {
-        RetainPtr<CGImageRef> image = adoptCF([self copyImageSnapshotWithColorSpace:WebCore::sRGBColorSpaceRef()]);
+        // [leopard] Build the snapshot in device RGB, not sRGB. A layer-contents
+        // CGImage whose colorspace differs from the display forces CoreAnimation
+        // to color-convert every frame (CA::Render::create_image_by_rendering --
+        // the dominant CPU cost in WebGL animation on 10.6). Device RGB matches
+        // the output space so CA can take the cheap copy/scan-out path.
+        static CGColorSpaceRef deviceRGB = CGColorSpaceCreateDeviceRGB();
+        RetainPtr<CGImageRef> image = adoptCF([self copyImageSnapshotWithColorSpace:deviceRGB]);
         self.contents = (__bridge id)image.get();
         [self reloadValueForKeyPath:@"contents"];
     }
