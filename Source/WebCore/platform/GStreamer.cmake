@@ -136,6 +136,11 @@ if (ENABLE_VIDEO)
         if (APPLE)
             list(APPEND WebCore_SOURCES
                 platform/graphics/gstreamer/MediaPlayerPrivateGStreamerIOSurface.mm
+                # [leopard] PlatformDisplay + concrete Cocoa subclass. Without
+                # these, sharedDisplayForCompositing() is unresolved and dyld
+                # fails at load when the GL sink path is active.
+                platform/graphics/PlatformDisplay.cpp
+                platform/graphics/PlatformDisplayCocoa.mm
             )
         endif ()
     endif ()

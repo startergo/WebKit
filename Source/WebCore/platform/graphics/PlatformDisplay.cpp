@@ -30,6 +30,15 @@
 #include <cstdlib>
 #include <mutex>
 
+#if PLATFORM(COCOA)
+// [leopard] Cocoa has no X11/Wayland/EGL display abstraction — the "display"
+// for the GstGL bridge is just the CGL share-group built by
+// PlatformDisplayGStreamer.cpp's tryEnsureGstGLContext(). This subclass is
+// a no-op concrete instance so sharedDisplayForCompositing() has something
+// to return a reference to. See PlatformDisplayCocoa.h for details.
+#include "PlatformDisplayCocoa.h"
+#endif
+
 #if PLATFORM(X11)
 #include "PlatformDisplayX11.h"
 #endif
@@ -84,6 +93,15 @@ namespace WebCore {
 
 std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
 {
+#if PLATFORM(COCOA)
+    // [leopard] See PlatformDisplayCocoa.h — minimal concrete subclass. The
+    // base RELEASE_ASSERT_NOT_REACHED() at the end of this function would
+    // crash on Cocoa without this early return, because no other platform
+    // branch matches. Returns a singleton-style instance via sharedDisplay()'s
+    // static unique_ptr.
+    return PlatformDisplayCocoa::create();
+#endif
+
 #if PLATFORM(GTK)
     if (gtk_init_check(nullptr, nullptr)) {
         GdkDisplay* display = gdk_display_manager_get_default_display(gdk_display_manager_get());

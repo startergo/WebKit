@@ -64,6 +64,12 @@ public:
 #if USE(WPE_RENDERER)
         WPE,
 #endif
+#if PLATFORM(COCOA)
+        // [leopard] Concrete subclass for the GstGL bridge — only needed when
+        // USE_GSTREAMER_GL is on, since that's the sole code path that calls
+        // sharedDisplayForCompositing() on Cocoa. See PlatformDisplayCocoa.h.
+        Cocoa,
+#endif
     };
 
     virtual Type type() const = 0;
