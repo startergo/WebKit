@@ -85,6 +85,7 @@
 #include <glib.h>
 #include <gst/audio/streamvolume.h>
 #include <gst/gst.h>
+#include <gst/app/gstappsink.h>
 #include <gst/pbutils/missing-plugins.h>
 #include <gst/video/gstvideometa.h>
 #include <limits>
@@ -3424,15 +3425,58 @@ MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamer::movieLoadType() const
 #if USE(GSTREAMER_GL)
 GstElement* MediaPlayerPrivateGStreamer::createVideoSinkGL()
 {
-    if (!webKitGLVideoSinkProbePlatform()) {
-        g_warning("WebKit wasn't able to find the GL video sink dependencies. Hardware-accelerated zero-copy video rendering can't be enabled without this plugin.");
+    // [leopard] glcolorscale -> appsink sink bin. Replaces the stock
+    // webkitglvideosink which hardcodes gst_element_factory_make("glupload")
+    // and ("glcolorconvert") — elements that don't exist on GStreamer 1.4.5.
+    // glcolorscale provides the same system->GLMemory upload (embedded in
+    // GstGLFilter base class). The other-context PROPERTY establishes the
+    // share-group with the wrapped CGL context. Verified end-to-end by the
+    // glcolorscale share-group probe (spikes/gstreamer-gl-investigation/).
+    auto& sharedDisplay = PlatformDisplay::sharedDisplayForCompositing();
+    GstGLContext* gstCtx = sharedDisplay.gstGLContext();
+    if (!gstCtx) {
+        GST_WARNING("GL sink: no shared GL context — falling back");
         return nullptr;
     }
 
-    GstElement* sink = gst_element_factory_make("webkitglvideosink", nullptr);
-    ASSERT(sink);
-    webKitGLVideoSinkSetMediaPlayerPrivate(WEBKIT_GL_VIDEO_SINK(sink), this);
-    return sink;
+    GstElement* sinkBin = gst_bin_new("webkit-gl-colorscale-sink");
+    GstElement* colorScale = gst_element_factory_make("glcolorscale", nullptr);
+    GstElement* appSink = gst_element_factory_make("appsink", "webkit-gl-colorscale-appsink");
+    if (!colorScale || !appSink) {
+        GST_WARNING("GL sink: could not create glcolorscale or appsink");
+        if (colorScale) gst_object_unref(colorScale);
+        if (appSink) gst_object_unref(appSink);
+        return nullptr;
+    }
+
+    // The other-context PROPERTY (not GstContext propagation) is the only
+    // mechanism that populates filter->other_context on 1.4.5, which
+    // gst_gl_context_create uses as the share parent.
+    g_object_set(colorScale, "other-context", gstCtx, nullptr);
+
+    GstCaps* caps = gst_caps_from_string("video/x-raw(memory:GLMemory),format=RGBA");
+    gst_app_sink_set_caps(GST_APP_SINK(appSink), caps);
+    gst_caps_unref(caps);
+    g_object_set(appSink, "enable-last-sample", FALSE, "emit-signals", TRUE, "max-buffers", 1, nullptr);
+
+    g_signal_connect(appSink, "new-sample", G_CALLBACK(+[](GstAppSink* sink, gpointer userData) -> GstFlowReturn {
+        auto* player = static_cast<MediaPlayerPrivateGStreamer*>(userData);
+        GstSample* sample = gst_app_sink_pull_sample(sink);
+        if (sample) {
+            player->triggerRepaint(sample);
+            gst_sample_unref(sample);
+        }
+        return GST_FLOW_OK;
+    }), this);
+
+    gst_bin_add_many(GST_BIN(sinkBin), colorScale, appSink, nullptr);
+    gst_element_link(colorScale, appSink);
+    GstPad* sinkPad = gst_element_get_static_pad(colorScale, "sink");
+    gst_element_add_pad(sinkBin, gst_ghost_pad_new("sink", sinkPad));
+    gst_object_unref(sinkPad);
+
+    GST_INFO("GL sink: created glcolorscale->appsink bin (share via other-context)");
+    return sinkBin;
 }
 #endif // USE(GSTREAMER_GL)
 

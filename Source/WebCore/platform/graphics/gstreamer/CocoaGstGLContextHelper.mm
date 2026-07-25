@@ -46,18 +46,17 @@ namespace WebCore {
 
 uintptr_t createCocoaGstGLShareContext()
 {
-    // Pixel format matches what createStandaloneCGLContext used to pin:
-    // 24-bit color + 8-bit alpha, double-buffered, hardware-accelerated,
-    // NoRecovery so a soft-fail to the software renderer is fatal rather
-    // than silently landing on the software renderer and breaking share-
-    // group visibility at runtime (see README "Open residual risk:
-    // renderer match").
+    // Pixel format MUST match GstGL's Cocoa backend (gstglcontext_cocoa.m:228-231):
+    // DoubleBuffer + AccumSize=32. Any deviation (ColorSize, AlphaSize, Accelerated,
+    // NoRecovery) causes "invalid share context" via Apple's pixel-format-compatibility
+    // sharing rules. On a machine with a discrete GPU (9400M), the default renderer
+    // resolves to hardware without explicit kCGLPFAAccelerated — verified by the
+    // renderer-ID log (0x102260e = GEFORCE). This was proven by the glcolorscale
+    // share-group probe (spikes/gstreamer-gl-investigation/README.md "Share-group
+    // victory" section).
     NSOpenGLPixelFormatAttribute attribs[] = {
-        NSOpenGLPFAColorSize,    (NSOpenGLPixelFormatAttribute)24,
-        NSOpenGLPFAAlphaSize,    (NSOpenGLPixelFormatAttribute)8,
         NSOpenGLPFADoubleBuffer,
-        NSOpenGLPFAAccelerated,
-        NSOpenGLPFANoRecovery,
+        NSOpenGLPFAAccumSize, (NSOpenGLPixelFormatAttribute)32,
         (NSOpenGLPixelFormatAttribute)0
     };
 
