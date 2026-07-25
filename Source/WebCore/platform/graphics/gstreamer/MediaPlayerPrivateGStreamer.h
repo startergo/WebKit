@@ -99,6 +99,17 @@ class IntSize;
 class IntRect;
 class VideoTextureCopierGStreamer;
 
+// [leopard] Forward declaration of the Cocoa IOSurface present bridge.
+// The class itself (defined in MediaPlayerPrivateGStreamerIOSurface.mm)
+// owns a CALayer + IOSurfaceRef + IOSurface-backed GL_TEXTURE_RECTANGLE
+// texture. Each frame, triggerRepaint() calls into the bridge to copy
+// the incoming GstGLMemory's texture into the IOSurface texture, then
+// sets the IOSurface as the CALayer's contents.
+#if USE(GSTREAMER_GL) && PLATFORM(COCOA)
+// CALayer forward decl lives at global scope via PlatformLayer.h, not here.
+class MediaPlayerPrivateGStreamerIOSurface;
+#endif
+
 #if USE(TEXTURE_MAPPER_GL)
 class TextureMapperPlatformLayerProxy;
 #endif
@@ -206,6 +217,15 @@ public:
 #endif
 #endif
 
+    // [leopard] On Cocoa, the IOSurface bridge returns a CALayer whose
+    // contents is updated each frame from the GstGLMemory produced by
+    // glupload. Un-gated from USE(TEXTURE_MAPPER_GL) because Mac uses
+    // Core Animation + CAOpenGLLayer, not the TextureMapper compositor.
+#if USE(GSTREAMER_GL) && PLATFORM(COCOA) && !USE(TEXTURE_MAPPER_GL)
+    PlatformLayer* platformLayer() const override;
+    bool supportsAcceleratedRendering() const override { return true; }
+#endif
+
 #if ENABLE(ENCRYPTED_MEDIA)
     void cdmInstanceAttached(CDMInstance&) final;
     void cdmInstanceDetached(CDMInstance&) final;
@@ -222,7 +242,9 @@ public:
 
     void updateEnabledVideoTrack();
     void updateEnabledAudioTrack();
+#if GST_CHECK_VERSION(1,10,0)
     void playbin3SendSelectStreamsIfAppropriate();
+#endif
 
     // Append pipeline interface
     // FIXME: Use the client interface pattern, AppendPipeline does not need the full interface to this class just for these two functions.
@@ -382,7 +404,11 @@ protected:
     bool m_isBeingDestroyed { false };
 
 #if USE(GSTREAMER_GL)
+    // [leopard] m_videoTextureCopier is gated by USE(TEXTURE_MAPPER_GL) — VideoTextureCopierGStreamer
+    // class only exists under that guard (see VideoTextureCopierGStreamer.h:23).
+#if USE(TEXTURE_MAPPER_GL)
     std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
+#endif
     GRefPtr<GstGLColorConvert> m_colorConvert;
     GRefPtr<GstCaps> m_colorConvertInputCaps;
     GRefPtr<GstCaps> m_colorConvertOutputCaps;
@@ -463,7 +489,9 @@ private:
     void setPlaybinURL(const URL& urlString);
     void loadFull(const String& url, const String& pipelineName);
 
+#if GST_CHECK_VERSION(1,10,0)
     void updateTracks(GRefPtr<GstStreamCollection>&&);
+#endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
     bool isCDMAttached() const { return m_cdmInstance; }
@@ -501,6 +529,15 @@ private:
 #else
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
 #endif
+#endif
+
+    // [leopard] Cocoa IOSurface present bridge. Lazily instantiated on
+    // the first accelerated frame; destroyed in the destructor (which
+    // runs on the main thread). All CGL/CALayer/IOSurface state lives
+    // inside the .mm file so the rest of the player doesn't need to
+    // include Cocoa headers.
+#if USE(GSTREAMER_GL) && PLATFORM(COCOA)
+    std::unique_ptr<MediaPlayerPrivateGStreamerIOSurface> m_ioSurfaceBridge;
 #endif
     bool m_isBuffering { false };
     int m_bufferingPercentage { 0 };

@@ -37,8 +37,13 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/graphics/gstreamer/mse/PlaybackPipeline.cpp
         platform/graphics/gstreamer/mse/SourceBufferPrivateGStreamer.cpp
         platform/graphics/gstreamer/mse/WebKitMediaSourceGStreamer.cpp
+    )
 
-        platform/mediastream/libwebrtc/GStreamerVideoDecoderFactory.cpp
+    # [leopard] MediaStream + WebRTC GStreamer sources only build when those
+    # features are enabled. Default macOS 10.6 build has both OFF.
+    if (ENABLE_MEDIA_STREAM OR ENABLE_WEB_RTC)
+        list(APPEND WebCore_SOURCES
+            platform/mediastream/libwebrtc/GStreamerVideoDecoderFactory.cpp
         platform/mediastream/libwebrtc/GStreamerVideoEncoder.cpp
         platform/mediastream/libwebrtc/GStreamerVideoEncoderFactory.cpp
         platform/mediastream/libwebrtc/LibWebRTCAudioModule.cpp
@@ -59,7 +64,8 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/mediastream/gstreamer/RealtimeMediaSourceCenterLibWebRTC.cpp
         platform/mediastream/gstreamer/RealtimeOutgoingAudioSourceLibWebRTC.cpp
         platform/mediastream/gstreamer/RealtimeOutgoingVideoSourceLibWebRTC.cpp
-    )
+        )
+    endif ()
 
     list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
         platform/graphics/gstreamer/GRefPtrGStreamer.h
@@ -122,6 +128,16 @@ if (ENABLE_VIDEO)
             platform/graphics/gstreamer/PlatformDisplayGStreamer.cpp
             platform/graphics/gstreamer/VideoTextureCopierGStreamer.cpp
         )
+        # [leopard] Cocoa IOSurface present bridge. Compiled as Objective-C++
+        # so it can use CALayer + IOSurface directly. The rest of the
+        # platform gets the TextureMapper path instead. APPLE here means
+        # the macOS Cocoa port (vs GTK-on-Darwin, which doesn't happen in
+        # practice); the C++ side double-gates via PLATFORM(COCOA).
+        if (APPLE)
+            list(APPEND WebCore_SOURCES
+                platform/graphics/gstreamer/MediaPlayerPrivateGStreamerIOSurface.mm
+            )
+        endif ()
     endif ()
 
     if (ENABLE_MEDIA_STREAM OR ENABLE_WEB_RTC)
@@ -185,5 +201,15 @@ endif ()
 if (USE_CAIRO)
     list(APPEND WebCore_SOURCES
         platform/graphics/gstreamer/ImageGStreamerCairo.cpp
+    )
+endif ()
+
+# [leopard] On the macOS Cocoa port (no Cairo), we need a CG-based
+# counterpart to ImageGStreamerCairo.cpp; without it the ImageGStreamer
+# ctor/dtor are unresolved, breaking video paint(). USE_CG isn't a
+# CMake variable on Mac (only a C++ macro), so guard on !USE_CAIRO.
+if (NOT USE_CAIRO)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/gstreamer/ImageGStreamerCG.cpp
     )
 endif ()

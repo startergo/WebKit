@@ -45,6 +45,13 @@
 #include "VideoSinkGStreamer.h"
 #include "WebKitWebSourceGStreamer.h"
 
+// [leopard] Cocoa IOSurface present bridge — only built when
+// USE(GSTREAMER_GL) && PLATFORM(COCOA). The header is empty on other
+// platforms so the include is a no-op there.
+#if USE(GSTREAMER_GL) && PLATFORM(COCOA)
+#include "MediaPlayerPrivateGStreamerIOSurface.h"
+#endif
+
 #if ENABLE(VIDEO_TRACK)
 #include "AudioTrackPrivateGStreamer.h"
 #include "InbandMetadataTextTrackPrivateGStreamer.h"
@@ -1445,7 +1452,9 @@ void MediaPlayerPrivateGStreamer::updateEnabledVideoTrack()
         g_object_set(m_pipeline.get(), "current-video", wantedTrack->trackIndex(), nullptr);
     } else {
         m_wantedVideoStreamId = wantedTrack->id();
+#if GST_CHECK_VERSION(1,10,0)
         playbin3SendSelectStreamsIfAppropriate();
+#endif
     }
 }
 
@@ -1469,10 +1478,13 @@ void MediaPlayerPrivateGStreamer::updateEnabledAudioTrack()
         g_object_set(m_pipeline.get(), "current-audio", wantedTrack->trackIndex(), nullptr);
     } else {
         m_wantedAudioStreamId = wantedTrack->id();
+#if GST_CHECK_VERSION(1,10,0)
         playbin3SendSelectStreamsIfAppropriate();
+#endif
     }
 }
 
+#if GST_CHECK_VERSION(1,10,0)
 void MediaPlayerPrivateGStreamer::playbin3SendSelectStreamsIfAppropriate()
 {
     ASSERT(!m_isLegacyPlaybin);
@@ -1501,6 +1513,7 @@ void MediaPlayerPrivateGStreamer::playbin3SendSelectStreamsIfAppropriate()
     gst_element_send_event(m_pipeline.get(), gst_event_new_select_streams(streams));
     g_list_free_full(streams, reinterpret_cast<GDestroyNotify>(g_free));
 }
+#endif
 
 template<typename K, typename V>
 HashSet<K> hashSetFromHashMapKeys(const HashMap<K, V>& hashMap)
@@ -1511,6 +1524,7 @@ HashSet<K> hashSetFromHashMapKeys(const HashMap<K, V>& hashMap)
     return keys;
 }
 
+#if GST_CHECK_VERSION(1,10,0)
 void MediaPlayerPrivateGStreamer::updateTracks(GRefPtr<GstStreamCollection>&& streamCollection)
 {
     ASSERT(!m_isLegacyPlaybin);
@@ -1579,6 +1593,7 @@ void MediaPlayerPrivateGStreamer::updateTracks(GRefPtr<GstStreamCollection>&& st
 
     m_player->mediaEngineUpdated();
 }
+#endif
 
 void MediaPlayerPrivateGStreamer::videoChangedCallback(MediaPlayerPrivateGStreamer* player)
 {
@@ -1606,6 +1621,7 @@ void MediaPlayerPrivateGStreamer::setPipeline(GstElement* pipeline)
 
 bool MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
 {
+#if GST_CHECK_VERSION(1,10,0)
     if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_STREAM_COLLECTION && !m_isLegacyPlaybin) {
         GRefPtr<GstStreamCollection> collection;
         gst_message_parse_stream_collection(message, &collection.outPtr());
@@ -1633,6 +1649,7 @@ bool MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
         }
 #endif
     }
+#endif
 
     if (GST_MESSAGE_TYPE(message) != GST_MESSAGE_NEED_CONTEXT)
         return false;
@@ -1928,8 +1945,10 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
             gst_element_state_get_name(currentState), '_', gst_element_state_get_name(newState)).utf8();
         GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, dotFileName.data());
 
+#if GST_CHECK_VERSION(1,10,0)
         if (!m_isLegacyPlaybin && currentState == GST_STATE_PAUSED && newState == GST_STATE_PLAYING)
             playbin3SendSelectStreamsIfAppropriate();
+#endif
 
         break;
     }
@@ -2079,6 +2098,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         gst_tag_list_unref(tags);
         break;
     }
+#if GST_CHECK_VERSION(1,10,0)
     case GST_MESSAGE_STREAMS_SELECTED: {
         if (m_isLegacyPlaybin)
             break;
@@ -2098,6 +2118,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         playbin3SendSelectStreamsIfAppropriate();
         break;
     }
+#endif
     default:
         GST_DEBUG_OBJECT(pipeline(), "Unhandled GStreamer message type: %s", GST_MESSAGE_TYPE_NAME(message));
         break;
@@ -2893,6 +2914,16 @@ void MediaPlayerPrivateGStreamer::acceleratedRenderingStateChanged()
     m_canRenderingBeAccelerated = m_player && m_player->acceleratedCompositingEnabled();
 }
 
+#if USE(GSTREAMER_GL) && PLATFORM(COCOA) && !USE(TEXTURE_MAPPER_GL)
+// [leopard] Cocoa IOSurface present path. Returns the CALayer owned by
+// m_ioSurfaceBridge, which has its contents updated each frame from
+// the GstGLMemory produced by glupload.
+PlatformLayer* MediaPlayerPrivateGStreamer::platformLayer() const
+{
+    return m_ioSurfaceBridge ? m_ioSurfaceBridge->layer() : nullptr;
+}
+#endif
+
 #if USE(TEXTURE_MAPPER_GL)
 PlatformLayer* MediaPlayerPrivateGStreamer::platformLayer() const
 {
@@ -3043,6 +3074,58 @@ void MediaPlayerPrivateGStreamer::triggerRepaint(GstSample* sample)
         return;
     }
 
+#if USE(GSTREAMER_GL) && PLATFORM(COCOA) && !USE(TEXTURE_MAPPER_GL)
+    // [leopard] Cocoa IOSurface present path. The sample from
+    // webkitglvideosink contains a GstGLMemory (texture produced by
+    // glupload in our shared GstGL context). We hand it to the bridge,
+    // which copies the texture into an IOSurface and sets the IOSurface
+    // as the CALayer's contents.
+    if (m_isUsingFallbackVideoSink) {
+        // The fallback sink (webkitVideoSink) emits CPU-side buffers.
+        // Defer to the paint() path — accelerated rendering is not
+        // available for this sample.
+        LockHolder locker(m_drawMutex);
+        if (m_isBeingDestroyed)
+            return;
+        m_drawTimer.startOneShot(0_s);
+        m_drawCondition.wait(m_drawMutex);
+        return;
+    }
+
+    // GL sink path: sample contains GstGLMemory.
+    GstCaps* caps = gst_sample_get_caps(sample);
+    GstVideoInfo info;
+    gst_video_info_init(&info);
+    if (!caps || !gst_video_info_from_caps(&info, caps)) {
+        GST_WARNING("IOSurface bridge: could not parse sample caps");
+        return;
+    }
+    int width = GST_VIDEO_INFO_WIDTH(&info);
+    int height = GST_VIDEO_INFO_HEIGHT(&info);
+
+    GstBuffer* buffer = gst_sample_get_buffer(sample);
+    if (!buffer || gst_buffer_n_memory(buffer) == 0) {
+        GST_WARNING("IOSurface bridge: empty buffer in sample");
+        return;
+    }
+
+    GstMemory* mem = gst_buffer_peek_memory(buffer, 0);
+    if (!mem || !gst_is_gl_memory(mem)) {
+        GST_WARNING("IOSurface bridge: sample buffer is not GstGLMemory");
+        return;
+    }
+    GstGLMemory* glMem = (GstGLMemory*)mem;
+
+    if (!m_ioSurfaceBridge)
+        m_ioSurfaceBridge = makeUnique<MediaPlayerPrivateGStreamerIOSurface>();
+    m_ioSurfaceBridge->presentGLMemory(glMem, width, height);
+
+    // Tell the MediaPlayer the layer was updated so it triggers
+    // a CAOpenGLLayer repaint cycle.
+    m_player->repaint();
+    return;
+#endif // USE(GSTREAMER_GL) && PLATFORM(COCOA) && !USE(TEXTURE_MAPPER_GL)
+
 #if USE(TEXTURE_MAPPER_GL)
     if (m_isUsingFallbackVideoSink) {
         LockHolder lock(m_drawMutex);
@@ -3106,6 +3189,12 @@ void MediaPlayerPrivateGStreamer::flushCurrentBuffer()
             gst_sample_get_segment(m_sample.get()), info ? gst_structure_copy(info) : nullptr));
     }
 
+#if USE(TEXTURE_MAPPER_GL)
+    // [leopard] Lambda + invocation both reference TextureMapperPlatformLayerProxy
+    // and m_platformLayerProxy/m_nicosiaLayer members, all gated by
+    // USE(TEXTURE_MAPPER_GL) in the header. Mac (CAOpenGLLayer) skips the
+    // proxy flush entirely; flushCurrentBuffer above already replaced the
+    // sample with a dummy, which is sufficient for the CPU paint path.
     bool shouldWait = m_videoDecoderPlatform == GstVideoDecoderPlatform::Video4Linux;
     auto proxyOperation = [shouldWait, pipeline = pipeline()](TextureMapperPlatformLayerProxy& proxy) {
         GST_DEBUG_OBJECT(pipeline, "Flushing video sample %s", shouldWait ? "synchronously" : "");
@@ -3120,6 +3209,7 @@ void MediaPlayerPrivateGStreamer::flushCurrentBuffer()
 #else
     proxyOperation(*m_platformLayerProxy);
 #endif
+#endif // USE(TEXTURE_MAPPER_GL)
 }
 #endif
 
@@ -3140,7 +3230,11 @@ void MediaPlayerPrivateGStreamer::paint(GraphicsContext& context, const FloatRec
     if (!GST_IS_SAMPLE(m_sample.get()))
         return;
 
-#if USE(GSTREAMER_GL)
+#if USE(GSTREAMER_GL) && GST_CHECK_VERSION(1,8,0)
+    // [leopard] The gst_is_gl_memory, GST_GL_MEMORY_CAST, GST_GL_TEXTURE_TARGET_*,
+    // and gst_gl_color_convert_* APIs used here are all 1.8+. On 1.4.5 (our
+    // bundled framework), paint() falls through to the ImageGStreamer CPU path
+    // below — same behavior as the non-GL build.
     // Ensure the input is RGBA. We handle YUV video natively, so we need to do
     // this conversion on-demand here.
     GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
@@ -3210,6 +3304,12 @@ bool MediaPlayerPrivateGStreamer::copyVideoTextureToPlatformTexture(GraphicsCont
     if (!GST_IS_SAMPLE(m_sample.get()))
         return false;
 
+#if USE(TEXTURE_MAPPER_GL)
+    // [leopard] GstVideoFrameHolder, TextureMapperPlatformLayerBuffer,
+    // VideoTextureCopierGStreamer, and m_textureMapperFlags are all gated by
+    // USE(TEXTURE_MAPPER_GL) in the header. Mac uses CAOpenGLLayer; on Cocoa
+    // the GL texture upload path isn't wired up — return false so callers
+    // fall back to the CPU paint() path.
     std::unique_ptr<GstVideoFrameHolder> frameHolder = makeUnique<GstVideoFrameHolder>(m_sample.get(), m_videoDecoderPlatform, m_textureMapperFlags, true);
 
     std::unique_ptr<TextureMapperPlatformLayerBuffer> layerBuffer = frameHolder->platformLayerBuffer();
@@ -3226,6 +3326,9 @@ bool MediaPlayerPrivateGStreamer::copyVideoTextureToPlatformTexture(GraphicsCont
     frameHolder->waitForCPUSync();
 
     return m_videoTextureCopier->copyVideoTextureToPlatformTexture(*layerBuffer.get(), size, outputTexture, outputTarget, level, internalFormat, format, type, flipY, m_videoSourceOrientation);
+#else
+    return false;
+#endif // USE(TEXTURE_MAPPER_GL)
 }
 
 NativeImagePtr MediaPlayerPrivateGStreamer::nativeImageForCurrentTime()
