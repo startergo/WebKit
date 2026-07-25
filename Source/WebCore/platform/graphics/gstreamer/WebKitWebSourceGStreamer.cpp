@@ -190,6 +190,26 @@ static void restartLoaderIfNeeded(WebKitWebSrc*, DataMutex<WebKitWebSrcPrivate::
 static void stopLoaderIfNeeded(WebKitWebSrc*, DataMutex<WebKitWebSrcPrivate::StreamingMembers>::LockedWrapper&);
 
 #define webkit_web_src_parent_class parent_class
+
+// [leopard] GLib 2.88's g_once_init_enter *macro* expands to a
+// g_atomic_pointer_get(volatile_gsize*) call that C++ rejects (the function
+// takes volatile void*, but the macro's ternary/g_atomic_pointer_get path
+// doesn't survive C++ type-checking on the volatile gsize guard variable
+// emitted by WEBKIT_DEFINE_TYPE_WITH_CODE). We bypass the macro entirely:
+// #undef it, define a thin wrapper that calls the real function (declared in
+// glib/gthread.h with prototype `gboolean g_once_init_enter(volatile void*)`,
+// which already accepts our volatile pointer — no cast required), then
+// re-define the macro to route subsequent uses through the wrapper. Because
+// the macro is #undef'd at the point the wrapper body is preprocessed, the
+// `g_once_init_enter(location)` call inside the wrapper refers to the real
+// function — no recursion.
+#undef g_once_init_enter
+static inline gboolean leopard_g_once_init_enter(volatile void *location)
+{
+    return g_once_init_enter(location);
+}
+#define g_once_init_enter(location) leopard_g_once_init_enter(location)
+
 WEBKIT_DEFINE_TYPE_WITH_CODE(WebKitWebSrc, webkit_web_src, GST_TYPE_PUSH_SRC,
     G_IMPLEMENT_INTERFACE(GST_TYPE_URI_HANDLER, webKitWebSrcUriHandlerInit);
     GST_DEBUG_CATEGORY_INIT(webkit_web_src_debug, "webkitwebsrc", 0, "websrc element");
@@ -204,7 +224,16 @@ static void webkit_web_src_class_init(WebKitWebSrcClass* klass)
     oklass->get_property = webKitWebSrcGetProperty;
 
     GstElementClass* eklass = GST_ELEMENT_CLASS(klass);
+    // [leopard] gst_element_class_add_static_pad_template is 1.8+. On
+    // 1.4.5 use the two-step form: gst_static_pad_template_get returns
+    // a cached GstPadTemplate* (owned by the static template), then
+    // gst_element_class_add_pad_template registers it on the class.
+    // The 1.8+ helper just wraps these two calls.
+#if GST_CHECK_VERSION(1, 8, 0)
     gst_element_class_add_static_pad_template(eklass, &srcTemplate);
+#else
+    gst_element_class_add_pad_template(eklass, gst_static_pad_template_get(&srcTemplate));
+#endif
 
     gst_element_class_set_metadata(eklass, "WebKit Web source element", "Source/Network", "Handles HTTP/HTTPS uris",
         "Philippe Normand <philn@igalia.com>");

@@ -378,6 +378,7 @@ template <> void derefGPtr<GstQuery>(GstQuery* ptr)
         gst_query_unref(ptr);
 }
 
+#if GST_CHECK_VERSION(1, 10, 0)
 template <> GRefPtr<GstStream> adoptGRef(GstStream* ptr)
 {
     return GRefPtr<GstStream>(ptr, GRefPtrAdopt);
@@ -415,6 +416,7 @@ template <> void derefGPtr<GstStreamCollection>(GstStreamCollection* ptr)
     if (ptr)
         gst_object_unref(ptr);
 }
+#endif // GST_CHECK_VERSION(1, 10, 0)
 
 template <> GRefPtr<WebKitVideoSink> adoptGRef(WebKitVideoSink* ptr)
 {

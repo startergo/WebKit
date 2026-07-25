@@ -227,12 +227,33 @@ void ImageDecoderGStreamer::InnerDecoder::connectDecoderPad(GstPad* pad)
     static GstAppSinkCallbacks callbacks = {
         nullptr,
         [](GstAppSink* sink, gpointer userData) -> GstFlowReturn {
+            // [leopard] gst_app_sink_try_pull_preroll is 1.10+. On <1.10,
+            // fall back to gst_app_sink_pull_preroll (blocking). Safe in
+            // this context because the new_preroll callback is invoked BY
+            // appsink when a preroll IS available, and the push is
+            // synchronized with the callback under appsink's internal
+            // lock — the sample is in the queue when the callback runs,
+            // so the blocking pull returns immediately. Do NOT replicate
+            // this substitution in non-callback code (where blocking
+            // could hang forever waiting for data that never arrives).
+#if GST_CHECK_VERSION(1, 10, 0)
             auto sample = adoptGRef(gst_app_sink_try_pull_preroll(sink, 0));
+#else
+            auto sample = adoptGRef(gst_app_sink_pull_preroll(sink));
+#endif
             static_cast<ImageDecoderGStreamer*>(userData)->handleSample(WTFMove(sample));
             return GST_FLOW_OK;
         },
         [](GstAppSink* sink, gpointer userData) -> GstFlowReturn {
+            // [leopard] Same reasoning as the new_preroll callback above:
+            // the new_sample callback is invoked by appsink when a sample
+            // IS available, so the blocking pull on <1.10 returns
+            // immediately. Safe substitution in this callback context.
+#if GST_CHECK_VERSION(1, 10, 0)
             auto sample = adoptGRef(gst_app_sink_try_pull_sample(sink, 0));
+#else
+            auto sample = adoptGRef(gst_app_sink_pull_sample(sink));
+#endif
             static_cast<ImageDecoderGStreamer*>(userData)->handleSample(WTFMove(sample));
             return GST_FLOW_OK;
         },
