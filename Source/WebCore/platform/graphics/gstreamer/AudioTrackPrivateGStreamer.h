@@ -43,10 +43,12 @@ public:
         return adoptRef(*new AudioTrackPrivateGStreamer(player, index, pad));
     }
 
+#if GST_CHECK_VERSION(1, 10, 0)
     static RefPtr<AudioTrackPrivateGStreamer> create(WeakPtr<MediaPlayerPrivateGStreamer> player, gint index, GRefPtr<GstStream> stream)
     {
         return adoptRef(*new AudioTrackPrivateGStreamer(player, index, stream));
     }
+#endif
 
     Kind kind() const final;
 
@@ -63,7 +65,9 @@ public:
 
 private:
     AudioTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivateGStreamer>, gint index, GRefPtr<GstPad>);
+#if GST_CHECK_VERSION(1, 10, 0)
     AudioTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivateGStreamer>, gint index, GRefPtr<GstStream>);
+#endif
 
     AtomString m_id;
     WeakPtr<MediaPlayerPrivateGStreamer> m_player;

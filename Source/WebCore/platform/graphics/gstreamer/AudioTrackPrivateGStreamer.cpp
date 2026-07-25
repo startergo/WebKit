@@ -42,6 +42,7 @@ AudioTrackPrivateGStreamer::AudioTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivat
     m_id = "A" + String::number(index);
 }
 
+#if GST_CHECK_VERSION(1, 10, 0)
 AudioTrackPrivateGStreamer::AudioTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivateGStreamer> player, gint index, GRefPtr<GstStream> stream)
     : TrackPrivateBaseGStreamer(this, index, stream)
     , m_player(player)
@@ -56,11 +57,14 @@ AudioTrackPrivateGStreamer::AudioTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivat
 
     m_id = gst_stream_get_stream_id(stream.get());
 }
+#endif
 
 AudioTrackPrivate::Kind AudioTrackPrivateGStreamer::kind() const
 {
+#if GST_CHECK_VERSION(1, 10, 0)
     if (m_stream.get() && gst_stream_get_stream_flags(m_stream.get()) & GST_STREAM_FLAG_SELECT)
         return AudioTrackPrivate::Kind::Main;
+#endif
 
     return AudioTrackPrivate::kind();
 }
