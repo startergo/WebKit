@@ -21,7 +21,11 @@
 #include "config.h"
 #include "VideoTextureCopierGStreamer.h"
 
-#if USE(GSTREAMER_GL)
+// [leopard] Mirrors the header's outer guard: this implementation is the
+// stock TextureMapper-GL present path and doesn't apply on Cocoa (which
+// uses the IOSurface bridge). Preprocesses to nothing when TEXTURE_MAPPER_GL
+// is off so the unused compile unit emits no symbols.
+#if USE(GSTREAMER_GL) && USE(TEXTURE_MAPPER_GL)
 
 #include "FloatRect.h"
 #include "GLContext.h"
@@ -299,4 +303,4 @@ bool VideoTextureCopierGStreamer::copyVideoTextureToPlatformTexture(TextureMappe
 
 } // namespace WebCore
 
-#endif // USE(GSTREAMER_GL)
+#endif // USE(GSTREAMER_GL) && USE(TEXTURE_MAPPER_GL)

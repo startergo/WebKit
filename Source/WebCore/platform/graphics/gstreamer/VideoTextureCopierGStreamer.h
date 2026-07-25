@@ -20,7 +20,15 @@
 #ifndef VideoTextureCopierGStreamer_h
 #define VideoTextureCopierGStreamer_h
 
-#if USE(GSTREAMER_GL)
+// [leopard] This entire class is the stock TextureMapper-GL present path
+// (TextureMapperPlatformLayerBuffer, TextureMapperShaderProgram). On Cocoa
+// the GL present path is the IOSurface bridge (MediaPlayerPrivateGStreamerIOSurface),
+// not TextureMapper, and the TextureMapper types are unavailable. Gate on
+// USE(TEXTURE_MAPPER_GL) in addition to USE(GSTREAMER_GL) so the file
+// preprocesses to nothing on Cocoa; call sites in MediaPlayerPrivateGStreamer
+// are already gated the same way (see m_videoTextureCopier at .h:406-411
+// and copyVideoTextureToPlatformTexture at .cpp:3307-3342).
+#if USE(GSTREAMER_GL) && USE(TEXTURE_MAPPER_GL)
 
 #include "ImageOrientation.h"
 #include "TextureMapperGLHeaders.h"
@@ -71,6 +79,6 @@ private:
 
 } // namespace WebCore
 
-#endif // USE(GSTREAMER_GL)
+#endif // USE(GSTREAMER_GL) && USE(TEXTURE_MAPPER_GL)
 
 #endif // VideoTextureCopierGStreamer_h

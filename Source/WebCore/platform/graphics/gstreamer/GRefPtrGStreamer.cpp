@@ -23,7 +23,7 @@
 #if USE(GSTREAMER)
 #include <gst/gst.h>
 
-#if USE(GSTREAMER_GL)
+#if USE(GSTREAMER_GL) && USE(EGL)
 #include <gst/gl/egl/gsteglimage.h>
 #endif
 
@@ -508,6 +508,13 @@ template<> void derefGPtr<GstGLContext>(GstGLContext* ptr)
         gst_object_unref(GST_OBJECT(ptr));
 }
 
+// [leopard] GstEGLImage + gst_egl_image_* are EGL-platform APIs (Linux
+// EGL/GTK/WPE). On Cocoa the GL bridge is CGL/IOSurface and EGL headers
+// are absent from gst145-mirror, so the include above and these
+// specializations fail. Gate them on USE(EGL); the outer USE(GSTREAMER_GL)
+// block remains because GstGLDisplay/GstGLContext above ARE used by the
+// Cocoa IOSurface bridge.
+#if USE(EGL)
 template <> GRefPtr<GstEGLImage> adoptGRef(GstEGLImage* ptr)
 {
     return GRefPtr<GstEGLImage>(ptr, GRefPtrAdopt);
@@ -525,6 +532,7 @@ template <> void derefGPtr<GstEGLImage>(GstEGLImage* ptr)
     if (ptr)
         gst_egl_image_unref(ptr);
 }
+#endif // USE(EGL)
 
 #endif // USE(GSTREAMER_GL)
 
