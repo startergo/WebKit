@@ -3455,9 +3455,12 @@ GstElement* MediaPlayerPrivateGStreamer::createVideoSinkGL()
     // gst_gl_context_create uses as the share parent.
     g_object_set(colorScale, "other-context", gstCtx, nullptr);
 
-    GstCaps* caps = gst_caps_from_string("video/x-raw(memory:GLMemory),format=RGBA");
-    gst_app_sink_set_caps(GST_APP_SINK(appSink), caps);
-    gst_caps_unref(caps);
+    // Do NOT set GLMemory caps on appsink — it blocks playbin's autoplug
+    // negotiation on 1.4.5 (caps transform returns EMPTY for some queries).
+    // Let glcolorscale negotiate its own output. The triggerRepaint callback
+    // checks gst_is_gl_memory() and falls back to CPU paint if the buffer
+    // is system memory. This means: GL frames use the IOSurface bridge,
+    // CPU frames use the existing paint path. Either way, video plays.
     g_object_set(appSink, "enable-last-sample", FALSE, "emit-signals", TRUE, "max-buffers", 1, nullptr);
 
     g_signal_connect(appSink, "new-sample", G_CALLBACK(+[](GstAppSink* sink, gpointer userData) -> GstFlowReturn {
