@@ -305,11 +305,8 @@ void MediaPlayerPrivateGStreamerIOSurface::presentGLMemory(GstGLMemory* glMemory
     if (!ensureSurfaceOfSize(width, height))
         return;
 
-    // Make our context current so the copy targets the right share group.
-    // copy_into_texture does its own thread-add internally into GstGL's
-    // GL thread, but the destination texture id must be visible in that
-    // thread's share context — which it is, because we share with the
-    // GstGL context via PlatformDisplay.
+    // Make our context current so glGetTexImage reads from the
+    // share-group-visible source texture.
     CGLContextObj prev = CGLGetCurrentContext();
     CGLSetCurrentContext(m_state->cglCtx);
 
@@ -320,28 +317,28 @@ void MediaPlayerPrivateGStreamerIOSurface::presentGLMemory(GstGLMemory* glMemory
     // share-group makes glcolorscale's texture visible in this context).
     // The readback cost is ~2ms at 720p (measured by the realistic benchmark).
     GLenum preCopyErr = glGetError();
-    glBindTexture(GL_TEXTURE_2D, glImage->tex_id);
+    glBindTexture(GL_TEXTURE_2D, glMemory->tex_id);
     GLenum bindErr = glGetError();
 
-    IOSurfaceLock(m_state->surface, kIOSurfaceLockReadWrite, nullptr);
-    void* ioBase = IOSurfaceGetBaseAddress(m_state->surface);
+    IOSurfaceLock(m_state->surface.get(), 0, nullptr);
+    void* ioBase = IOSurfaceGetBaseAddress(m_state->surface.get());
     if (ioBase) {
         // Read directly into the IOSurface's backing memory.
         // GL_BGRA + GL_UNSIGNED_INT_8_8_8_8_REV matches the IOSurface's
         // BGRA pixel layout — no format conversion needed.
         glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, ioBase);
     }
-    IOSurfaceUnlock(m_state->surface, kIOSurfaceLockReadWrite, nullptr);
+    IOSurfaceUnlock(m_state->surface.get(), 0, nullptr);
     GLenum postCopyErr = glGetError();
 
     GST_DEBUG("IOSurface bridge: glGetTexImage src_tex=%u w=%d h=%d "
               "| bindErr=0x%x getErr=0x%x",
-              glImage->tex_id, width, height,
+              glMemory->tex_id, width, height,
               (unsigned)bindErr, (unsigned)postCopyErr);
 
     // Set the IOSurface as the CALayer's contents. Core Animation
     // composites it on the next vsync.
-    [m_state->layer.get() setContents:contents];
+    m_state->layer.get().contents = (__bridge id)m_state->surface.get();
 
     GST_TRACE("IOSurface bridge: presented %dx%d tex=%u → layer=%p",
               width, height, m_state->ioTexture, m_state->layer.get());

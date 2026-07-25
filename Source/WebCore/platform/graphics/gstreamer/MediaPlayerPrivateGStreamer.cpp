@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "MediaPlayerPrivateGStreamer.h"
+#include "PlatformDisplay.h"  // [leopard] needed for PlatformDisplay::sharedDisplayForCompositing() in createVideoSinkGL (Cocoa IOSurface path)
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
