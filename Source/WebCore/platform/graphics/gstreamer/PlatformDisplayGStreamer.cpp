@@ -51,9 +51,11 @@
 // spikes/gstreamer-gl-investigation/ for the architecture + probe
 // history that landed on this design.
 #if PLATFORM(COCOA)
-#include <OpenGL/OpenGL.h>
-#include <OpenGL/CGLCurrent.h>
-#include <OpenGL/CGLTypes.h>
+#include "CocoaGstGLContextHelper.h"
+// Note: no CGL header includes here. The Cocoa branch no longer touches
+// CGL directly — NSOpenGLContext creation (and the CGL handle derivation
+// for renderer-ID logging) is hidden inside CocoaGstGLContextHelper.mm,
+// which is the only ObjC++ compilation unit in this GL path.
 #endif
 
 #define GST_USE_UNSTABLE_API
@@ -91,43 +93,11 @@ static GstGLDisplay* createGstGLDisplay(const PlatformDisplay& sharedDisplay)
 }
 
 #if PLATFORM(COCOA)
-// [leopard] Create a standalone CGL context on the hardware renderer.
-// This is the share parent for GstGL — glupload/gldownload will create
-// their own NSOpenGLContexts that share with this one via
-// gst_gl_context_create(native, wrapped_share_parent, &err).
-// kCGLPFAAccelerated + kCGLPFANoRecovery force the hardware renderer
-// (verified on the 9400M in spikes/gstreamer-gl-investigation/).
-//
-// Returns a CGLContextObj (caller owns; must CGLDestroyContext) or NULL
-// on failure. The context is activated on the calling thread.
-static CGLContextObj createStandaloneCGLContext()
-{
-    CGLPixelFormatAttribute attribs[] = {
-        kCGLPFAColorSize,     (CGLPixelFormatAttribute)24,
-        kCGLPFAAlphaSize,     (CGLPixelFormatAttribute)8,
-        kCGLPFADoubleBuffer,
-        kCGLPFAAccelerated,
-        kCGLPFANoRecovery,
-        (CGLPixelFormatAttribute)0
-    };
-    CGLPixelFormatObj pf = nullptr;
-    GLint nvirt = 0;
-    CGLError cerr = CGLChoosePixelFormat(attribs, &pf, &nvirt);
-    if (cerr != kCGLNoError || !pf) {
-        GST_WARNING("CGLChoosePixelFormat failed: err=%d", (int)cerr);
-        return nullptr;
-    }
-    CGLContextObj ctx = nullptr;
-    cerr = CGLCreateContext(pf, nullptr, &ctx);
-    CGLDestroyPixelFormat(pf);
-    if (cerr != kCGLNoError || !ctx) {
-        GST_WARNING("CGLCreateContext failed: err=%d", (int)cerr);
-        return nullptr;
-    }
-    CGLSetCurrentContext(ctx);
-    return ctx;
-}
-#endif // PLATFORM(COCOA)
+// No standalone-CGL helper anymore. The wrapped-context path creates its
+// NSOpenGLContext inside WebCore::createCocoaGstGLShareContext() (see
+// CocoaGstGLContextHelper.mm). That function is the only place in this
+// GL path that touches AppKit / CGL directly.
+#endif
 
 bool PlatformDisplay::tryEnsureGstGLContext() const
 {
@@ -135,96 +105,86 @@ bool PlatformDisplay::tryEnsureGstGLContext() const
         return true;
 
 #if PLATFORM(COCOA)
-    // [leopard] Cocoa IOSurface bridge — see spikes/gstreamer-gl-investigation/
-    // for the design history. The short version:
+    // [leopard] Cocoa wrapped-context bridge. See
+    // spikes/gstreamer-gl-investigation/README.md for the full history,
+    // including the dispatch_sync(main_queue) deadlock topology that
+    // forced this design.
     //
-    //   1. Build a standalone CGL context on the hardware renderer.
-    //   2. Create a default GstGLDisplay (Cocoa subclass is automatic).
-    //   3. Wrap our CGL context as the share parent.
-    //   4. Create a native GstGLContext (GstGLContextCocoa) that shares
-    //      with our wrapped context via gst_gl_context_create().
+    // Shape (fix #1):
+    //   1. Create an NSOpenGLContext pinned to the hardware renderer
+    //      (kCGLPFAAccelerated + kCGLPFANoRecovery).
+    //   2. gst_gl_display_new() — Cocoa subclass is auto-selected.
+    //   3. gst_gl_context_new_wrapped(display, nsctx_handle,
+    //                                 GST_GL_PLATFORM_CGL,
+    //                                 GST_GL_API_OPENGL) — no worker
+    //      thread, no dispatch, no main-queue drain requirement.
     //
-    // The resulting m_gstGLContext is what GLVideoSinkGStreamer hands to
-    // glupload/gldownload via GstContext propagation. Those elements then
-    // allocate GstGLMemory textures in their own NSOpenGLContext (which
-    // shares with ours), and the IOSurface bridge in
-    // MediaPlayerPrivateGStreamerIOSurface.mm copies each frame into a
-    // CALayer-bound IOSurface.
-    CGLContextObj cglContext = createStandaloneCGLContext();
-    if (!cglContext) {
-        GST_WARNING("Cocoa GstGL bridge: could not create standalone CGL context");
-        return false;
-    }
-
+    // What we deliberately do NOT call, and why:
+    //   - gst_gl_context_create(): spawns a GstGL worker thread that
+    //     hits dispatch_barrier_sync(main_queue) inside
+    //     gstglcontext_cocoa_create_context. When this function is
+    //     reached from a CFRunLoopTimer callback
+    //     (HTMLMediaElement::selectMediaResource -> createVideoSink ->
+    //     webKitGLVideoSinkProbePlatform -> gstGLContext), the main
+    //     thread is inside __CFRunLoopRun/timerFired and cannot drain
+    //     the main dispatch queue -> circular deadlock, app hangs at
+    //     startup. Removing the call removes the worker entirely.
+    //
+    //   - gst_gl_context_activate(wrapped, ...): GstGL 1.4.5's
+    //     gst_gl_wrapped_context_activate is g_assert_not_reached()
+    //     (gstglcontext.c). Calling it would abort the process, not
+    //     return FALSE as the spike README asserted.
+    //
+    //   - gst_gl_context_fill_info(): does not exist in GstGL 1.4.5
+    //     (no decl in gst/gl/gl.h, no def in gstglcontext.c). The
+    //     wrapped context's gl_major/gl_minor/gl_exts/gl_vtable stay
+    //     zero/NULL; downstream GstGL consumers use this context only
+    //     as a share-parent NSOpenGLContext handle (via
+    //     gst_gl_context_get_gl_context), not for capability queries.
+    //
+    // Wrap-handle contract: the handle MUST be an NSOpenGLContext*, not
+    // a raw CGLContextObj. gstglcontext_cocoa.m casts the handle to
+    // NSOpenGLContext*; a raw CGLContextObj reinterpreted as an ObjC
+    // object pointer is UB (see README "What does NOT work" table).
+    // MediaPlayerPrivateGStreamerIOSurface.mm extracts the handle via
+    // gst_gl_context_get_gl_context and walks to CGLContextObj through
+    // -[NSOpenGLContext CGLContextObj], which only works if the handle
+    // really is an NSOpenGLContext*.
     m_gstGLDisplay = adoptGRef(gst_gl_display_new());
     if (!m_gstGLDisplay) {
         GST_WARNING("Cocoa GstGL bridge: gst_gl_display_new returned NULL");
-        CGLDestroyContext(cglContext);
-        CGLSetCurrentContext(nullptr);
         return false;
     }
 
-    // Wrap our CGL context as the share parent. The share parent is what
-    // gst_gl_context_create will pass to NSOpenGLContext's
-    // initWithFormat:shareContext: when building the native GstGL context.
-    GRefPtr<GstGLContext> shareParent = adoptGRef(gst_gl_context_new_wrapped(
+    uintptr_t nsCtxHandle = WebCore::createCocoaGstGLShareContext();
+    if (!nsCtxHandle) {
+        GST_WARNING("Cocoa GstGL bridge: createCocoaGstGLShareContext returned 0 "
+                    "(see prior log for NSOpenGLContext creation failure)");
+        return false;
+    }
+
+    GRefPtr<GstGLContext> wrappedContext = adoptGRef(gst_gl_context_new_wrapped(
         m_gstGLDisplay.get(),
-        reinterpret_cast<guintptr>(cglContext),
+        static_cast<guintptr>(nsCtxHandle),
         GST_GL_PLATFORM_CGL,
         GST_GL_API_OPENGL));
-    if (!shareParent) {
+    if (!wrappedContext) {
         GST_WARNING("Cocoa GstGL bridge: gst_gl_context_new_wrapped returned NULL");
-        CGLDestroyContext(cglContext);
-        CGLSetCurrentContext(nullptr);
         return false;
     }
 
-    // Create the native GstGL context. This will spawn GstGL's internal
-    // GL thread and call dispatch_sync(main_queue, ...) inside
-    // gstglcontext_cocoa.m — which is safe here because WebKit's main
-    // thread runs NSApplication's run loop (unlike standalone probes,
-    // which had to be reworked to avoid this deadlock; see the spike
-    // README for the false-positive history).
-    GRefPtr<GstGLContext> nativeContext = adoptGRef(gst_gl_context_new(m_gstGLDisplay.get()));
-    if (!nativeContext) {
-        GST_WARNING("Cocoa GstGL bridge: gst_gl_context_new returned NULL");
-        CGLDestroyContext(cglContext);
-        CGLSetCurrentContext(nullptr);
-        return false;
-    }
+    // Renderer-ID log is emitted inside createCocoaGstGLShareContext.
+    // It's load-bearing now: under the wrapped-context design, if a
+    // downstream GstGL element auto-creates a context that resolves to
+    // a different CGL renderer than this one, cross-context texture
+    // visibility fails and frames come through black. That looks
+    // identical to the FBO-readback false-black the spike already
+    // chased; the renderer IDs are the only thing that distinguishes
+    // the two cases at runtime.
+    GST_INFO("Cocoa GstGL bridge: wrapped gst_ctx=%p nsctx_handle=0x%llx",
+             wrappedContext.get(), (unsigned long long)nsCtxHandle);
 
-    GUniqueOutPtr<GError> error;
-    if (!gst_gl_context_create(nativeContext.get(), shareParent.get(), &error.outPtr())) {
-        GST_WARNING("Cocoa GstGL bridge: gst_gl_context_create failed: %s",
-                    error ? error->message : "(unknown)");
-        CGLDestroyContext(cglContext);
-        CGLSetCurrentContext(nullptr);
-        return false;
-    }
-
-    gst_gl_context_activate(nativeContext.get(), TRUE);
-
-    // Diagnostics: log the renderer ID. This is the "open residual risk"
-    // from the spike README — if the 9400M is not the resolved renderer,
-    // texture sharing with the WebKit compositor will fail. The IOSurface
-    // bridge doesn't actually depend on share-group match (it does an
-    // intra-context copy), so this is informational, not gating.
-    GLint rendererID = 0;
-    CGLGetParameter(cglContext, kCGLCPCurrentRendererID, &rendererID);
-    GST_INFO("Cocoa GstGL bridge established: cgl=%p renderer=0x%x (%s) gst_ctx=%p",
-             cglContext, (unsigned)rendererID,
-             (rendererID & 0x00020000) ? "GEFORCE" :
-             (rendererID & 0x00040000) ? "SOFTWARE" : "unknown",
-             nativeContext.get());
-
-    m_gstGLContext = WTFMove(nativeContext);
-
-    // NOTE: we intentionally leak cglContext here. GstGLWrappedContext
-    // does not own the wrapped handle (verified in the spike), and
-    // destroying cglContext while the native GstGL context still holds
-    // a share reference would crash on the next GL call. The context
-    // lives for the lifetime of the PlatformDisplay, which is effectively
-    // process-lifetime.
+    m_gstGLContext = WTFMove(wrappedContext);
     return true;
 #else
 #if USE(OPENGL_ES)

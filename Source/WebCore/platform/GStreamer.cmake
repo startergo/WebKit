@@ -136,6 +136,11 @@ if (ENABLE_VIDEO)
         if (APPLE)
             list(APPEND WebCore_SOURCES
                 platform/graphics/gstreamer/MediaPlayerPrivateGStreamerIOSurface.mm
+                # [leopard] NSOpenGLContext factory for the wrapped-context
+                # GstGL bridge. Compiled as ObjC++ because NSOpenGLContext
+                # is AppKit-only; the C++ side (PlatformDisplayGStreamer.cpp)
+                # calls it through a guintptr-typed C-linkage entry point.
+                platform/graphics/gstreamer/CocoaGstGLContextHelper.mm
                 # [leopard] PlatformDisplay + concrete Cocoa subclass. Without
                 # these, sharedDisplayForCompositing() is unresolved and dyld
                 # fails at load when the GL sink path is active.
