@@ -116,6 +116,14 @@ GRefPtr<WebKitWebSrc> ensureGRef(WebKitWebSrc* ptr);
 template<> WebKitWebSrc* refGPtr<WebKitWebSrc>(WebKitWebSrc* ptr);
 template<> void derefGPtr<WebKitWebSrc>(WebKitWebSrc* ptr);
 
+// [leopard] GstStream and GstStreamCollection are 1.10+ APIs (dev 1.9.x,
+// stable 1.10). On the 1.4.5 build the types are absent from the gst/*
+// headers, so the GRefPtr specializations below have nothing to bind to
+// and fail to compile. Gate the declarations; downstream call sites that
+// pass these types (updateTracks, TrackPrivateBaseGStreamer ctors) need
+// the same gate at the call site — the compiler will name them as the
+// next failure layer.
+#if GST_CHECK_VERSION(1, 10, 0)
 template<> GRefPtr<GstStream> adoptGRef(GstStream*);
 template<> GstStream* refGPtr<GstStream>(GstStream*);
 template<> void derefGPtr<GstStream>(GstStream*);
@@ -123,6 +131,7 @@ template<> void derefGPtr<GstStream>(GstStream*);
 template<> GRefPtr<GstStreamCollection> adoptGRef(GstStreamCollection*);
 template<> GstStreamCollection* refGPtr<GstStreamCollection>(GstStreamCollection*);
 template<> void derefGPtr<GstStreamCollection>(GstStreamCollection*);
+#endif
 
 #if USE(GSTREAMER_GL)
 template<> GRefPtr<GstGLDisplay> adoptGRef(GstGLDisplay* ptr);

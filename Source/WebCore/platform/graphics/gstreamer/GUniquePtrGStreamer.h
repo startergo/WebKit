@@ -42,8 +42,16 @@ WTF_DEFINE_GPTR_DELETER(GstIterator, gst_iterator_free)
 WTF_DEFINE_GPTR_DELETER(GstSegment, gst_segment_free)
 WTF_DEFINE_GPTR_DELETER(GstFlowCombiner, gst_flow_combiner_free)
 WTF_DEFINE_GPTR_DELETER(GstByteReader, gst_byte_reader_free)
+// [leopard] GstVideoConverter and GstAudioConverter are 1.6+ APIs. On
+// the 1.4.5 build the types are absent from gst/video/*.h and
+// gst/audio/*.h, so the WTF_DEFINE_GPTR_DELETER macro expands to a
+// deleter for an undeclared type and fails to compile. Gate the macro
+// calls; mirror the WPE_VIDEO_PLANE_DISPLAY_DMABUF conditional style
+// below.
+#if GST_CHECK_VERSION(1, 6, 0)
 WTF_DEFINE_GPTR_DELETER(GstVideoConverter, gst_video_converter_free)
 WTF_DEFINE_GPTR_DELETER(GstAudioConverter, gst_audio_converter_free)
+#endif
 
 #if USE(WPE_VIDEO_PLANE_DISPLAY_DMABUF)
 WTF_DEFINE_GPTR_DELETER(struct wpe_video_plane_display_dmabuf_source, wpe_video_plane_display_dmabuf_source_destroy)
