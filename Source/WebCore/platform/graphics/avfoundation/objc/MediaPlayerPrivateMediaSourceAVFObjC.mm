@@ -1217,6 +1217,9 @@ void MediaPlayerPrivateMediaSourceAVFObjC::characteristicsChanged()
     m_player->characteristicChanged();
 }
 
+#if ENABLE(VIDEO_PRESENTATION_MODE)
+// [leopard] Gated to match base class declarations — definitions for the
+// overrides that exist only when VIDEO_PRESENTATION_MODE is enabled.
 RetainPtr<PlatformLayer> MediaPlayerPrivateMediaSourceAVFObjC::createVideoFullscreenLayer()
 {
     return adoptNS([[CALayer alloc] init]);
@@ -1232,6 +1235,8 @@ void MediaPlayerPrivateMediaSourceAVFObjC::setVideoFullscreenFrame(FloatRect fra
 {
     m_videoLayerManager->setVideoFullscreenFrame(frame);
 }
+
+#endif
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::requiresTextTrackRepresentation() const
 {

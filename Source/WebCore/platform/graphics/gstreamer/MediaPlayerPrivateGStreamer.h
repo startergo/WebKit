@@ -277,7 +277,8 @@ protected:
         TextChanged = 1 << 5,
 #endif
         SizeChanged = 1 << 6,
-        StreamCollectionChanged = 1 << 7
+        StreamCollectionChanged = 1 << 7,
+        GLRepaint = 1 << 8
     };
 
     static bool isAvailable();

@@ -70,24 +70,35 @@ static void webKitGLVideoSinkConstructed(GObject* object)
     ASSERT(sink->priv->appSink);
     g_object_set(sink->priv->appSink.get(), "enable-last-sample", FALSE, "emit-signals", TRUE, "max-buffers", 1, nullptr);
 
-    GstElement* upload = gst_element_factory_make("glupload", nullptr);
-    GstElement* colorconvert = gst_element_factory_make("glcolorconvert", nullptr);
-    ASSERT(upload);
-    ASSERT(colorconvert);
-    gst_bin_add_many(GST_BIN_CAST(sink), upload, colorconvert, sink->priv->appSink.get(), nullptr);
+    // [leopard] On GstGL 1.4.5, glupload and glcolorconvert do not exist as
+    // standalone elements (they were refactored into GstGLFilter's base class
+    // in 1.6). glcolorscale — a GstGLFilter subclass — provides the same
+    // system-memory→GLMemory upload AND color-space conversion in one element.
+    // This was proven by isolated probes; see
+    // spikes/gstreamer-gl-investigation/README.md.
+    GstElement* colorscale = gst_element_factory_make("glcolorscale", nullptr);
+    ASSERT(colorscale);
 
-    // Workaround until we can depend on GStreamer 1.16.2.
-    // https://gitlab.freedesktop.org/gstreamer/gst-plugins-base/commit/8d32de090554cf29fe359f83aa46000ba658a693
-    // Forcing a color conversion to RGBA here allows glupload to internally use
-    // an uploader that adds a VideoMeta, through the TextureUploadMeta caps
-    // feature, without needing the patch above. However this specific caps
-    // feature is going to be removed from GStreamer so it is considered a
-    // short-term workaround. This code path most likely will have a negative
-    // performance impact on embedded platforms as well. Downstream embedders
-    // are highly encouraged to cherry-pick the patch linked above in their BSP
-    // and set the WEBKIT_GST_NO_RGBA_CONVERSION environment variable until
-    // GStreamer 1.16.2 is released.
-    // See also https://bugs.webkit.org/show_bug.cgi?id=201422
+    // [leopard] On GstGL 1.4.5, GstContext propagation does not populate
+    // filter->other_context on GstGLFilter subclasses. The other-context
+    // GObject property is the only mechanism that works. Set it directly
+    // to our wrapped Cocoa GstGLContext so glcolorscale's output textures
+    // are visible in our share group.
+    {
+        auto& sharedDisplay = PlatformDisplay::sharedDisplayForCompositing();
+        auto* gstGLContext = sharedDisplay.gstGLContext();
+        if (gstGLContext) {
+            g_object_set(colorscale, "other-context", gstGLContext, nullptr);
+            GST_INFO_OBJECT(sink, "Set glcolorscale other-context to %" GST_PTR_FORMAT, gstGLContext);
+        } else
+            GST_WARNING_OBJECT(sink, "No GstGLContext available for glcolorscale other-context");
+    }
+
+    gst_bin_add_many(GST_BIN_CAST(sink), colorscale, sink->priv->appSink.get(), nullptr);
+
+    // glcolorscale accepts system-memory video/x-raw on its sink pad and
+    // produces video/x-raw(memory:GLMemory) on its src pad. The appsink
+    // caps filter ensures we get GLMemory output.
     GRefPtr<GstCaps> caps;
     if (webkitGstCheckVersion(1, 16, 2) || getenv("WEBKIT_GST_NO_RGBA_CONVERSION"))
         caps = adoptGRef(gst_caps_from_string("video/x-raw, format = (string) " GST_GL_CAPS_FORMAT));
@@ -98,9 +109,9 @@ static void webKitGLVideoSinkConstructed(GObject* object)
     gst_caps_set_features(caps.get(), 0, gst_caps_features_new(GST_CAPS_FEATURE_MEMORY_GL_MEMORY, nullptr));
     g_object_set(sink->priv->appSink.get(), "caps", caps.get(), nullptr);
 
-    gst_element_link_many(upload, colorconvert, sink->priv->appSink.get(), nullptr);
+    gst_element_link(colorscale, sink->priv->appSink.get());
 
-    GRefPtr<GstPad> pad = adoptGRef(gst_element_get_static_pad(upload, "sink"));
+    GRefPtr<GstPad> pad = adoptGRef(gst_element_get_static_pad(colorscale, "sink"));
     gst_element_add_pad(GST_ELEMENT_CAST(sink), gst_ghost_pad_new("sink", pad.get()));
 }
 

@@ -21,6 +21,11 @@ find_library(XML2_LIBRARY XML2)
 find_package(Sqlite3 REQUIRED)
 find_package(ZLIB REQUIRED)
 
+# [leopard] GStreamer media backend (replaces AVFoundation which is 10.7+).
+if (USE_GSTREAMER)
+    include(platform/GStreamer.cmake)
+endif()
+
 # [leopard-webkit-build] 610 links the imported target LibXml2::LibXml2 but the Mac
 # port only does find_library(XML2_LIBRARY XML2), never creating the imported target.
 # The 10.6 SDK ships libxml2.2.dylib + headers, so define the target from the SDK.
@@ -127,6 +132,7 @@ list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/opengl"
     "${WEBCORE_DIR}/platform/graphics/mac"
+    "${WEBCORE_DIR}/platform/graphics/texmap"
     "${WEBCORE_DIR}/platform/mac"
     "${WEBCORE_DIR}/platform/mediacapabilities"
     "${WEBCORE_DIR}/platform/mediarecorder/cocoa"

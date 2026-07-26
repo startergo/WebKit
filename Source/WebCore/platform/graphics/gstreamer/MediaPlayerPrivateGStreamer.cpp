@@ -1692,6 +1692,34 @@ bool MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
     }
 #endif // ENABLE(ENCRYPTED_MEDIA)
 
+#if USE(GSTREAMER_GL)
+    // [leopard] Handle GL context need-context messages from glimagesink
+    // (and other GL elements). Without this, glimagesink creates its own
+    // unshared GL context and the share-group with the wrapped CGL context
+    // is never established. Same logic as the old requestGLContext in
+    // GLVideoSinkGStreamer.cpp:120-145.
+    auto& sharedDisplay = PlatformDisplay::sharedDisplayForCompositing();
+    auto* gstGLDisplay = sharedDisplay.gstGLDisplay();
+    auto* gstGLContext = sharedDisplay.gstGLContext();
+
+    if (gstGLDisplay && gstGLContext) {
+        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
+            GRefPtr<GstContext> context = adoptGRef(gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE));
+            gst_context_set_gl_display(context.get(), gstGLDisplay);
+            gst_element_set_context(GST_ELEMENT(GST_MESSAGE_SRC(message)), context.get());
+            return true;
+        }
+
+        if (!g_strcmp0(contextType, "gst.gl.app_context")) {
+            GRefPtr<GstContext> context = adoptGRef(gst_context_new("gst.gl.app_context", TRUE));
+            GstStructure* structure = gst_context_writable_structure(context.get());
+            gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, gstGLContext, nullptr);
+            gst_element_set_context(GST_ELEMENT(GST_MESSAGE_SRC(message)), context.get());
+            return true;
+        }
+    }
+#endif
+
     GST_DEBUG_OBJECT(pipeline(), "Unhandled %s need-context message for %s", contextType, GST_MESSAGE_SRC_NAME(message));
     return false;
 }
@@ -3077,54 +3105,82 @@ void MediaPlayerPrivateGStreamer::triggerRepaint(GstSample* sample)
     }
 
 #if USE(GSTREAMER_GL) && PLATFORM(COCOA) && !USE(TEXTURE_MAPPER_GL)
-    // [leopard] Cocoa IOSurface present path. The sample from
-    // webkitglvideosink contains a GstGLMemory (texture produced by
-    // glupload in our shared GstGL context). We hand it to the bridge,
-    // which copies the texture into an IOSurface and sets the IOSurface
-    // as the CALayer's contents.
+    // [leopard] Cocoa IOSurface present path.
+    //
+    // Both the GL sink path and the CPU fallback path present through the
+    // IOSurface bridge (CGImage → IOSurface → CALayer.contents). Core
+    // Animation composites the result on the GPU.
+    //
+    // For the GL sink: sample contains GstGLMemory → presentGLMemory.
+    // For CPU fallback: sample is system-memory → ImageGStreamer → CGImageRef → presentCGImage.
+    //
+    // Both paths dispatch to the main thread via m_notifier (presentGLMemory
+    // and presentCGImage ASSERT isMainThread; CGLTexImageIOSurface2D,
+    // CGBitmapContextCreate and CALayer.contents all require main-thread access).
     if (m_isUsingFallbackVideoSink) {
-        // The fallback sink (webkitVideoSink) emits CPU-side buffers.
-        // Defer to the paint() path — accelerated rendering is not
-        // available for this sample.
-        LockHolder locker(m_drawMutex);
-        if (m_isBeingDestroyed)
+        m_notifier->notify(MainThreadNotification::GLRepaint, [this] {
+            GRefPtr<GstSample> sample;
+            {
+                auto sampleLocker = holdLock(m_sampleMutex);
+                sample = m_sample;
+            }
+            if (!GST_IS_SAMPLE(sample.get()))
+                return;
+
+            auto gstImage = ImageGStreamer::createImage(sample.get());
+            if (!gstImage)
+                return;
+
+            auto nativeImage = gstImage->image().nativeImageForCurrentFrame();
+            if (!nativeImage)
+                return;
+
+            if (!m_ioSurfaceBridge)
+                m_ioSurfaceBridge = makeUnique<MediaPlayerPrivateGStreamerIOSurface>();
+            m_ioSurfaceBridge->presentCGImage(nativeImage.get());
+            m_player->repaint();
+        });
+        return;
+    }
+
+    m_notifier->notify(MainThreadNotification::GLRepaint, [this] {
+        GRefPtr<GstSample> sample;
+        {
+            auto sampleLocker = holdLock(m_sampleMutex);
+            sample = m_sample;
+        }
+        if (!GST_IS_SAMPLE(sample.get()))
             return;
-        m_drawTimer.startOneShot(0_s);
-        m_drawCondition.wait(m_drawMutex);
-        return;
-    }
 
-    // GL sink path: sample contains GstGLMemory.
-    GstCaps* caps = gst_sample_get_caps(sample);
-    GstVideoInfo info;
-    gst_video_info_init(&info);
-    if (!caps || !gst_video_info_from_caps(&info, caps)) {
-        GST_WARNING("IOSurface bridge: could not parse sample caps");
-        return;
-    }
-    int width = GST_VIDEO_INFO_WIDTH(&info);
-    int height = GST_VIDEO_INFO_HEIGHT(&info);
+        GstCaps* caps = gst_sample_get_caps(sample.get());
+        GstVideoInfo info;
+        gst_video_info_init(&info);
+        if (!caps || !gst_video_info_from_caps(&info, caps)) {
+            GST_WARNING("IOSurface bridge: could not parse sample caps");
+            return;
+        }
+        int width = GST_VIDEO_INFO_WIDTH(&info);
+        int height = GST_VIDEO_INFO_HEIGHT(&info);
 
-    GstBuffer* buffer = gst_sample_get_buffer(sample);
-    if (!buffer || gst_buffer_n_memory(buffer) == 0) {
-        GST_WARNING("IOSurface bridge: empty buffer in sample");
-        return;
-    }
+        GstBuffer* buffer = gst_sample_get_buffer(sample.get());
+        if (!buffer || gst_buffer_n_memory(buffer) == 0) {
+            GST_WARNING("IOSurface bridge: empty buffer in sample");
+            return;
+        }
 
-    GstMemory* mem = gst_buffer_peek_memory(buffer, 0);
-    if (!mem || !gst_is_gl_memory(mem)) {
-        GST_WARNING("IOSurface bridge: sample buffer is not GstGLMemory");
-        return;
-    }
-    GstGLMemory* glMem = (GstGLMemory*)mem;
+        GstMemory* mem = gst_buffer_peek_memory(buffer, 0);
+        if (!mem || !gst_is_gl_memory(mem)) {
+            GST_WARNING("IOSurface bridge: sample buffer is not GstGLMemory");
+            return;
+        }
+        GstGLMemory* glMem = (GstGLMemory*)mem;
 
-    if (!m_ioSurfaceBridge)
-        m_ioSurfaceBridge = makeUnique<MediaPlayerPrivateGStreamerIOSurface>();
-    m_ioSurfaceBridge->presentGLMemory(glMem, width, height);
+        if (!m_ioSurfaceBridge)
+            m_ioSurfaceBridge = makeUnique<MediaPlayerPrivateGStreamerIOSurface>();
+        m_ioSurfaceBridge->presentGLMemory(glMem, width, height);
 
-    // Tell the MediaPlayer the layer was updated so it triggers
-    // a CAOpenGLLayer repaint cycle.
-    m_player->repaint();
+        m_player->repaint();
+    });
     return;
 #endif // USE(GSTREAMER_GL) && PLATFORM(COCOA) && !USE(TEXTURE_MAPPER_GL)
 
@@ -3426,61 +3482,15 @@ MediaPlayer::MovieLoadType MediaPlayerPrivateGStreamer::movieLoadType() const
 #if USE(GSTREAMER_GL)
 GstElement* MediaPlayerPrivateGStreamer::createVideoSinkGL()
 {
-    // [leopard] glcolorscale -> appsink sink bin. Replaces the stock
-    // webkitglvideosink which hardcodes gst_element_factory_make("glupload")
-    // and ("glcolorconvert") — elements that don't exist on GStreamer 1.4.5.
-    // glcolorscale provides the same system->GLMemory upload (embedded in
-    // GstGLFilter base class). The other-context PROPERTY establishes the
-    // share-group with the wrapped CGL context. Verified end-to-end by the
-    // glcolorscale share-group probe (spikes/gstreamer-gl-investigation/).
-    auto& sharedDisplay = PlatformDisplay::sharedDisplayForCompositing();
-    GstGLContext* gstCtx = sharedDisplay.gstGLContext();
-    if (!gstCtx) {
-        GST_WARNING("GL sink: no shared GL context — falling back");
-        return nullptr;
-    }
-
-    GstElement* sinkBin = gst_bin_new("webkit-gl-colorscale-sink");
-    GstElement* colorScale = gst_element_factory_make("glcolorscale", nullptr);
-    GstElement* appSink = gst_element_factory_make("appsink", "webkit-gl-colorscale-appsink");
-    if (!colorScale || !appSink) {
-        GST_WARNING("GL sink: could not create glcolorscale or appsink");
-        if (colorScale) gst_object_unref(colorScale);
-        if (appSink) gst_object_unref(appSink);
-        return nullptr;
-    }
-
-    // The other-context PROPERTY (not GstContext propagation) is the only
-    // mechanism that populates filter->other_context on 1.4.5, which
-    // gst_gl_context_create uses as the share parent.
-    g_object_set(colorScale, "other-context", gstCtx, nullptr);
-
-    // Do NOT set GLMemory caps on appsink — it blocks playbin's autoplug
-    // negotiation on 1.4.5 (caps transform returns EMPTY for some queries).
-    // Let glcolorscale negotiate its own output. The triggerRepaint callback
-    // checks gst_is_gl_memory() and falls back to CPU paint if the buffer
-    // is system memory. This means: GL frames use the IOSurface bridge,
-    // CPU frames use the existing paint path. Either way, video plays.
-    g_object_set(appSink, "enable-last-sample", FALSE, "emit-signals", TRUE, "max-buffers", 1, nullptr);
-
-    g_signal_connect(appSink, "new-sample", G_CALLBACK(+[](GstAppSink* sink, gpointer userData) -> GstFlowReturn {
-        auto* player = static_cast<MediaPlayerPrivateGStreamer*>(userData);
-        GstSample* sample = gst_app_sink_pull_sample(sink);
-        if (sample) {
-            player->triggerRepaint(sample);
-            gst_sample_unref(sample);
-        }
-        return GST_FLOW_OK;
-    }), this);
-
-    gst_bin_add_many(GST_BIN(sinkBin), colorScale, appSink, nullptr);
-    gst_element_link(colorScale, appSink);
-    GstPad* sinkPad = gst_element_get_static_pad(colorScale, "sink");
-    gst_element_add_pad(sinkBin, gst_ghost_pad_new("sink", sinkPad));
-    gst_object_unref(sinkPad);
-
-    GST_INFO("GL sink: created glcolorscale->appsink bin (share via other-context)");
-    return sinkBin;
+    // [leopard] The glcolorscale-based GL sink is architecturally complete
+    // (GLVideoSinkGStreamer.cpp uses glcolorscale as the 1.4.5 substitute
+    // for glupload+glcolorconvert) but glcolorscale's element constructor
+    // fails under the Safari DYLD_FRAMEWORK_PATH environment — the plugin
+    // loads but gst_element_factory_make returns NULL. Until this GStreamer
+    // 1.4.5 plugin loading issue is resolved, we fall back to the CPU sink
+    // (webkitVideoSinkNew) and present via the IOSurface bridge using
+    // CGImage→IOSurface→CALayer (Core Animation GPU compositing).
+    return nullptr;
 }
 #endif // USE(GSTREAMER_GL)
 

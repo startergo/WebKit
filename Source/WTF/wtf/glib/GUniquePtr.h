@@ -21,7 +21,7 @@
 #ifndef GUniquePtr_h
 #define GUniquePtr_h
 
-#if USE(GLIB)
+#if USE(GLIB) || USE(GSTREAMER)
 
 #include <gio/gio.h>
 #include <utility>

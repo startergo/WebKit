@@ -23,14 +23,12 @@
 #ifndef WTF_GRefPtr_h
 #define WTF_GRefPtr_h
 
-#if USE(GLIB)
+#if USE(GLIB) || USE(GSTREAMER)
 
 #include <wtf/HashTraits.h>
 #include <algorithm>
 #include <glib.h>
-
-extern "C" void g_object_unref(gpointer);
-extern "C" gpointer g_object_ref_sink(gpointer);
+#include <glib-object.h>
 
 namespace WTF {
 

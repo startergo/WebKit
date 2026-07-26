@@ -110,9 +110,15 @@ public:
     AVSampleBufferDisplayLayer* sampleBufferDisplayLayer() const { return m_sampleBufferDisplayLayer.get(); }
     WebCoreDecompressionSession* decompressionSession() const { return m_decompressionSession.get(); }
 
+#if ENABLE(VIDEO_PRESENTATION_MODE)
+    // [leopard] These overrides only exist in MediaPlayerPrivateInterface when
+    // ENABLE(VIDEO_PRESENTATION_MODE) is on. Without this gate the build fails
+    // with "only virtual member functions can be marked 'override'" on ports
+    // (like the 10.6 build) that disable fullscreen presentation.
     RetainPtr<PlatformLayer> createVideoFullscreenLayer() override;
     void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) override;
     void setVideoFullscreenFrame(FloatRect) override;
+#endif
 
     bool requiresTextTrackRepresentation() const override;
     void setTextTrackRepresentation(TextTrackRepresentation*) override;

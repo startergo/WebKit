@@ -7,6 +7,12 @@ list(APPEND WTF_LIBRARIES
     ${READLINE_LIBRARY}
 )
 
+    # [leopard] Compile the GLib source files that the GStreamer code depends on.
+    list(APPEND WTF_SOURCES
+        glib/GLibUtilities.cpp
+        glib/GRefPtr.cpp
+    )
+
 list(APPEND WTF_PUBLIC_HEADERS
     WeakObjCPtr.h
 
@@ -89,6 +95,45 @@ list(APPEND WTF_SOURCES
     text/cocoa/StringViewCocoa.mm
     text/cocoa/TextBreakIteratorInternalICUCocoa.cpp
 )
+
+# [leopard] GStreamer media backend pulls in GLib headers via WebCore's
+# platform/graphics/gstreamer/* code. Stage those GLib headers from WTF
+# into ForwardingHeaders so WebCore can find <wtf/glib/GRefPtr.h> etc.
+if (USE_GSTREAMER)
+    # [leopard] Compile the GLib source files that the GStreamer code depends on.
+    list(APPEND WTF_SOURCES
+        glib/GLibUtilities.cpp
+        glib/GRefPtr.cpp
+    )
+
+    list(APPEND WTF_PUBLIC_HEADERS
+        glib/GLibUtilities.h
+        glib/GMutexLocker.h
+        glib/GRefPtr.h
+        glib/RunLoopSourcePriority.h
+        glib/GTypedefs.h
+        glib/GUniquePtr.h
+        glib/GSocketMonitor.h
+        glib/SocketConnection.h
+        glib/WTFGType.h
+    )
+
+    # [leopard] USE_GSTREAMER transitively pulls in USE(GLIB) (see patch 15),
+    # which makes wtf/CurrentTime.cpp + others include <glib.h>. Find GLib via
+    # pkg-config (mirror at dist/macports-mirror) and add it to WTF's link.
+    # Include the full GLib family so FileSystem.cpp's <gio/gfile*.h> etc. work.
+    # gio-unix-2.0 provides gfiledescriptorbased.h (Unix file-descriptor GIO).
+    find_package(PkgConfig QUIET)
+    if (PkgConfig_FOUND)
+        pkg_check_modules(PC_GLIB IMPORTED_TARGET glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0 gio-unix-2.0)
+    endif ()
+    if (PC_GLIB_FOUND)
+        list(APPEND WTF_LIBRARIES PkgConfig::PC_GLIB)
+        link_directories(${PC_GLIB_LIBRARY_DIRS})
+    else ()
+        message(FATAL_ERROR "USE_GSTREAMER requires GLib on macOS -- set PKG_CONFIG_PATH to the MacPorts mirror.")
+    endif ()
+endif ()
 
 file(COPY mac/MachExceptions.defs DESTINATION ${WTF_DERIVED_SOURCES_DIR})
 

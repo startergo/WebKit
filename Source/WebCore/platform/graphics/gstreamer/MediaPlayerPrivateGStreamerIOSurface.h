@@ -62,6 +62,14 @@ public:
     // main thread.
     void presentGLMemory(GstGLMemory*, int width, int height);
 
+    // [leopard] CPU fallback: set the CALayer's contents directly from
+    // a CGImageRef (from ImageGStreamer::createImage). Used when the
+    // GL sink is unavailable and the fallback sink produces system-
+    // memory samples. No IOSurface or GL involved — just CALayer.contents.
+    void presentCGImage(CGImageRef);
+
+
+
 private:
     std::unique_ptr<IOSurfaceBridgeState> m_state;
 };

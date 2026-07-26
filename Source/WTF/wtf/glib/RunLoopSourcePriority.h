@@ -19,11 +19,11 @@
 
 #pragma once
 
-#if USE(GLIB)
+#if USE(GLIB) || USE(GSTREAMER)
 
 namespace WTF {
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(COCOA)
 
 // This is a global enum to define priorities used by GLib run loop sources.
 // In GLib, priorities are represented by an integer where lower values mean

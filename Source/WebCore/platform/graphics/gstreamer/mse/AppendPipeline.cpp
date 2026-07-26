@@ -156,7 +156,9 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
     gst_app_sink_set_emit_signals(GST_APP_SINK(m_appsink.get()), TRUE);
     gst_base_sink_set_sync(GST_BASE_SINK(m_appsink.get()), FALSE);
     gst_base_sink_set_async_enabled(GST_BASE_SINK(m_appsink.get()), FALSE); // No prerolls, no async state changes.
+#if GST_CHECK_VERSION(1,6,0)
     gst_base_sink_set_drop_out_of_segment(GST_BASE_SINK(m_appsink.get()), FALSE);
+#endif
     gst_base_sink_set_last_sample_enabled(GST_BASE_SINK(m_appsink.get()), FALSE);
 
     GRefPtr<GstPad> appsinkPad = adoptGRef(gst_element_get_static_pad(m_appsink.get(), "sink"));
@@ -551,10 +553,20 @@ void AppendPipeline::consumeAppsinkAvailableSamples()
     // Batch duration changes so that if we pick 100 of such samples we don't have to run 100 times
     // layout for the video controls, but only once.
     m_playerPrivate->blockDurationChanges();
+#if GST_CHECK_VERSION(1,6,0)
     while ((sample = adoptGRef(gst_app_sink_try_pull_sample(GST_APP_SINK(m_appsink.get()), 0)))) {
         appsinkNewSample(WTFMove(sample));
         batchedSampleCount++;
     }
+#else
+    // [leopard] gst_app_sink_try_pull_sample is 1.6+. With default
+    // max-buffers=1, each new-sample callback has exactly one sample.
+    sample = adoptGRef(gst_app_sink_pull_sample(GST_APP_SINK(m_appsink.get())));
+    if (sample) {
+        appsinkNewSample(WTFMove(sample));
+        batchedSampleCount++;
+    }
+#endif
     m_playerPrivate->unblockDurationChanges();
 
     GST_TRACE_OBJECT(m_pipeline.get(), "batchedSampleCount = %d", batchedSampleCount);

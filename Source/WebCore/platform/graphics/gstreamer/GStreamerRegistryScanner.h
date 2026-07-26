@@ -24,6 +24,8 @@
 #include "MediaConfiguration.h"
 
 #include "MediaPlayerEnums.h"
+
+typedef struct _GList GList;
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>

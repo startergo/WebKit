@@ -19,7 +19,7 @@
 #include "config.h"
 #include <wtf/glib/GRefPtr.h>
 
-#if USE(GLIB)
+#if USE(GLIB) || USE(GSTREAMER)
 
 #include <glib-object.h>
 #include <glib.h>

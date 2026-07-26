@@ -247,7 +247,15 @@ static GstFlowReturn webkitMediaSrcChain(GstPad* pad, GstObject* parent, GstBuff
 {
     GRefPtr<WebKitMediaSrc> self = adoptGRef(WEBKIT_MEDIA_SRC(gst_object_get_parent(parent)));
 
-    return gst_flow_combiner_update_pad_flow(self->priv->flowCombiner.get(), pad, gst_proxy_pad_chain_default(pad, GST_OBJECT(self.get()), buffer));
+    GstFlowReturn flow = gst_proxy_pad_chain_default(pad, GST_OBJECT(self.get()), buffer);
+#if GST_CHECK_VERSION(1,6,0)
+    return gst_flow_combiner_update_pad_flow(self->priv->flowCombiner.get(), pad, flow);
+#else
+    // [leopard] gst_flow_combiner_update_pad_flow is 1.6+.
+    // gst_flow_combiner_update_flow (1.4) doesn't track per-pad flow,
+    // but MSE typically has one stream per pad so the aggregation is equivalent.
+    return gst_flow_combiner_update_flow(self->priv->flowCombiner.get(), flow);
+#endif
 }
 
 static void webkit_media_src_init(WebKitMediaSrc* source)

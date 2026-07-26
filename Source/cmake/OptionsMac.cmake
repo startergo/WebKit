@@ -110,7 +110,21 @@ WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WEB_CRYPTO PRIVATE ON)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_WIRELESS_PLAYBACK_TARGET PRIVATE OFF) # [leopard] OFF to match ENABLE_VIDEO=OFF (avoids dangling RemotePlayback vtable)
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_XSLT PRIVATE ON)
 
+# [leopard] Register ENABLE_GRAPHICS_CONTEXT_GL as a WEBKIT_OPTION AND pull
+# in GStreamerDefinitions.cmake (which holds WEBKIT_OPTION_DEFINE(USE_GSTREAMER_GL ...)).
+# Without both, USE_GSTREAMER_GL stays unregistered on Mac and every
+# #if USE(GSTREAMER_GL) source guard evaluates false at compile time,
+# silently disabling the entire GL video sink code path.
+# Matches OptionsGTK.cmake:58 + :92 / OptionsWPE.cmake:40 patterns.
+include(GStreamerDefinitions)
+WEBKIT_OPTION_DEFINE(ENABLE_GRAPHICS_CONTEXT_GL "Whether to use OpenGL." PUBLIC ON)
+
 WEBKIT_OPTION_END()
+
+# [leopard] Enable GStreamer media backend for 10.6 (replaces AVFoundation which is 10.7+).
+if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
+    include(GStreamerChecks)
+endif()
 
 set(ENABLE_GRAPHICS_CONTEXT_GL ON)
 set(ENABLE_WEBKIT_LEGACY ON)

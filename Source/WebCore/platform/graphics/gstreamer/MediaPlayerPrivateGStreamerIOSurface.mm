@@ -344,6 +344,46 @@ void MediaPlayerPrivateGStreamerIOSurface::presentGLMemory(GstGLMemory* glMemory
               width, height, m_state->ioTexture, m_state->layer.get());
 }
 
+void MediaPlayerPrivateGStreamerIOSurface::presentCGImage(CGImageRef cgImage)
+{
+    ASSERT(isMainThread());
+    if (!cgImage)
+        return;
+
+    int width = CGImageGetWidth(cgImage);
+    int height = CGImageGetHeight(cgImage);
+    if (width <= 0 || height <= 0)
+        return;
+
+    if (!ensureSurfaceOfSize(width, height))
+        return;
+
+    // Draw the CGImage directly into the IOSurface's backing store via a
+    // CGBitmapContext. This avoids a GL roundtrip and uses CoreGraphics's
+    // optimized blit path. Core Animation then composites the IOSurface
+    // on the GPU via the CALayer's contents property.
+    IOSurfaceLock(m_state->surface.get(), 0, nullptr);
+    void* ioBase = IOSurfaceGetBaseAddress(m_state->surface.get());
+    if (ioBase) {
+        int bytesPerRow = IOSurfaceGetBytesPerRow(m_state->surface.get());
+        CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+        CGContextRef ctx = CGBitmapContextCreate(
+            ioBase, width, height, 8, bytesPerRow, cs,
+            kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+        if (ctx) {
+            CGContextDrawImage(ctx, CGRectMake(0, 0, width, height), cgImage);
+            CGContextRelease(ctx);
+        }
+        CGColorSpaceRelease(cs);
+    }
+    IOSurfaceUnlock(m_state->surface.get(), 0, nullptr);
+
+    m_state->layer.get().contents = (__bridge id)m_state->surface.get();
+
+    GST_TRACE("IOSurface bridge: presented CGImage %dx%d → layer=%p",
+              width, height, m_state->layer.get());
+}
+
 } // namespace WebCore
 
 #endif // USE(GSTREAMER_GL) && PLATFORM(COCOA)

@@ -29,6 +29,13 @@
 #include <epoxy/gl.h>
 #elif USE(OPENGL_ES)
 #include <GLES2/gl2.h>
+#elif PLATFORM(COCOA)
+// [leopard] Mac has OpenGL as a first-class framework, statically linkable.
+// Skip the OpenGLShims.h path (which is for Linux/EFL dlopen-based GL loading)
+// and include the framework headers directly. Matches the pattern at
+// platform/graphics/opengl/GraphicsContextGLOpenGLCommon.cpp:62-72.
+#include <OpenGL/gl.h>
+#include <OpenGL/glext.h>
 #else
 #include "OpenGLShims.h"
 #endif
