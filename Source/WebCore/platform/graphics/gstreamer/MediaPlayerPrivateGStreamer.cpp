@@ -1748,11 +1748,13 @@ FloatSize MediaPlayerPrivateGStreamer::naturalSize() const
     }
 #endif // ENABLE(MEDIA_STREAM)
 
-    if (!hasVideo())
-        return FloatSize();
-
+    // [leopard] Check m_videoSize first — for MSE, hasVideo() may be false
+    // during resets but the sidecar decoder may still have valid dimensions.
     if (!m_videoSize.isEmpty())
         return m_videoSize;
+
+    if (!hasVideo())
+        return FloatSize();
 
     auto sampleLocker = holdLock(m_sampleMutex);
     if (!GST_IS_SAMPLE(m_sample.get()))
@@ -1812,6 +1814,18 @@ FloatSize MediaPlayerPrivateGStreamer::naturalSize() const
     GST_DEBUG_OBJECT(pipeline(), "Natural size: %" G_GUINT64_FORMAT "x%" G_GUINT64_FORMAT, width, height);
     m_videoSize = FloatSize(static_cast<int>(width), static_cast<int>(height));
     return m_videoSize;
+}
+
+void MediaPlayerPrivateGStreamer::setVideoSize(int width, int height)
+{
+    auto newSize = IntSize(width, height);
+    if (m_size == newSize)
+        return;
+    m_size = newSize;
+    m_videoSize = FloatSize(width, height);
+    GST_DEBUG("setVideoSize: %dx%d", width, height);
+    if (m_player)
+        m_player->sizeChanged();
 }
 
 void MediaPlayerPrivateGStreamer::setVolume(float volume)
@@ -2950,6 +2964,9 @@ void MediaPlayerPrivateGStreamer::acceleratedRenderingStateChanged()
 // the GstGLMemory produced by glupload.
 PlatformLayer* MediaPlayerPrivateGStreamer::platformLayer() const
 {
+    // [leopard] For MSE, return nullptr so WebCore uses the paint() path which
+    // correctly fills the video element. The IOSurface/CALayer path is only used
+    // for progressive video where the compositing system is properly set up.
     return m_ioSurfaceBridge ? m_ioSurfaceBridge->layer() : nullptr;
 }
 #endif

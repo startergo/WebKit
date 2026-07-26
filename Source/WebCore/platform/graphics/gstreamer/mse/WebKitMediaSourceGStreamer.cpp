@@ -494,6 +494,12 @@ void webKitMediaSrcLinkStreamToSrcPad(GstPad* sourcePad, Stream* stream)
 
     gst_pad_set_active(ghostpad, TRUE);
     gst_element_add_pad(GST_ELEMENT(stream->parent), ghostpad);
+
+    // [leopard] Signal no-more-pads after adding each pad. On GStreamer 1.4.5,
+    // playbin's READY→PAUSED transition stalls indefinitely if the source uses
+    // SOMETIMES pads and never emits no-more-pads. Without this, playbin waits
+    // forever for more pads and the MSE pipeline never reaches PAUSED.
+    gst_element_no_more_pads(GST_ELEMENT(stream->parent));
 }
 
 void webKitMediaSrcLinkSourcePad(GstPad* sourcePad, GstCaps* caps, Stream* stream)

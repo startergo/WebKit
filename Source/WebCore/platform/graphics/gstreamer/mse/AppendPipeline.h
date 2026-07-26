@@ -96,6 +96,16 @@ private:
 
     GstPadProbeReturn appsrcEndOfAppendCheckerProbe(GstPadProbeInfo*);
 
+    // [leopard] Sidecar decoder pipeline — bypasses playbin's READY→PAUSED
+    // stall on WebKitMediaSrc. appsrc(block=TRUE) → decodebin → videoconvert
+    // → appsink. Fed from the AppendPipeline's parsed (encoded) samples.
+    void ensureDecoderPipeline(GstCaps* caps);
+    static GstFlowReturn decoderAppsinkNewSample(GstElement* appsink, AppendPipeline* self);
+    GRefPtr<GstElement> m_decoderPipeline;
+    GRefPtr<GstElement> m_decoderAppsrc;
+    GRefPtr<GstElement> m_decoderAppsink;
+    std::atomic<bool> m_decoderValid { false };
+
     static void staticInitialization();
 
     static std::once_flag s_staticInitializationFlag;

@@ -247,6 +247,12 @@ AppendPipeline::~AppendPipeline()
     GST_DEBUG_OBJECT(m_pipeline.get(), "Destructing AppendPipeline (%p)", this);
     ASSERT(isMainThread());
 
+    // [leopard] Stop the sidecar decoder pipeline and invalidate it
+    // before any pending RunLoop dispatches can access this object.
+    m_decoderValid = false;
+    if (m_decoderPipeline)
+        gst_element_set_state(m_decoderPipeline.get(), GST_STATE_NULL);
+
     // Forget all pending tasks and unblock the streaming thread if it was blocked.
     m_taskQueue.startAborting();
 
@@ -460,7 +466,7 @@ void AppendPipeline::handleEndOfAppend()
 {
     ASSERT(isMainThread());
     consumeAppsinkAvailableSamples();
-    GST_TRACE_OBJECT(m_pipeline.get(), "Notifying SourceBufferPrivate the append is complete");
+    GST_DEBUG_OBJECT(m_pipeline.get(), "Notifying SourceBufferPrivate the append is complete");
     sourceBufferPrivate()->didReceiveAllPendingSamples();
 }
 
@@ -509,6 +515,106 @@ void AppendPipeline::appsinkNewSample(GRefPtr<GstSample>&& sample)
     }
 
     m_sourceBufferPrivate->didReceiveSample(mediaSample.get());
+
+    // [leopard] Feed encoded video samples to the sidecar decoder pipeline.
+    // This bypasses playbin's READY→PAUSED stall by using decodebin directly.
+    if (m_streamType == Video) {
+        ensureDecoderPipeline(gst_sample_get_caps(sample.get()));
+        GstBuffer* buffer = gst_sample_get_buffer(sample.get());
+        if (buffer && m_decoderAppsrc) {
+            GstBuffer* pushBuf = gst_buffer_copy(buffer);
+            GstFlowReturn ret;
+            g_signal_emit_by_name(m_decoderAppsrc.get(), "push-buffer", pushBuf, &ret);
+            gst_buffer_unref(pushBuf);
+        }
+    }
+}
+
+// [leopard] Sidecar decoder pipeline implementation.
+void AppendPipeline::ensureDecoderPipeline(GstCaps* caps)
+{
+    ASSERT(isMainThread());
+    if (m_decoderPipeline)
+        return;
+
+    if (!caps)
+        return;
+
+    GST_INFO("Creating sidecar decoder pipeline for caps %" GST_PTR_FORMAT, caps);
+
+    m_decoderPipeline = adoptGRef(gst_pipeline_new("mse-video-decode"));
+    m_decoderAppsrc = adoptGRef(gst_element_factory_make("appsrc", "dec-src"));
+    GstElement* decodebin = gst_element_factory_make("decodebin", "dec");
+    GstElement* convert = gst_element_factory_make("videoconvert", "conv");
+    m_decoderAppsink = adoptGRef(gst_element_factory_make("appsink", "dec-sink"));
+
+    if (!m_decoderAppsrc || !decodebin || !convert || !m_decoderAppsink) {
+        GST_ERROR("Failed to create sidecar decoder pipeline elements");
+        m_decoderPipeline = nullptr;
+        return;
+    }
+
+    // Configure appsrc: block=TRUE keeps the pipeline alive across data gaps.
+    g_object_set(m_decoderAppsrc.get(), "block", TRUE, "is-live", FALSE,
+        "format", GST_FORMAT_TIME, "do-timestamp", TRUE, nullptr);
+    g_object_set(m_decoderAppsrc.get(), "caps", caps, nullptr);
+
+    // Configure appsink. Force BGRA output for the IOSurface bridge.
+    GstCaps* bgraCaps = gst_caps_from_string("video/x-raw,format=BGRA");
+    g_object_set(m_decoderAppsink.get(), "emit-signals", TRUE,
+        "sync", FALSE, "async", FALSE, "max-buffers", 1, "drop", TRUE,
+        "caps", bgraCaps, nullptr);
+    gst_caps_unref(bgraCaps);
+    g_signal_connect(m_decoderAppsink.get(), "new-sample",
+        G_CALLBACK(+[](GstElement* appsink, AppendPipeline* self) -> GstFlowReturn {
+            return self->decoderAppsinkNewSample(appsink, self);
+        }), this);
+
+    gst_bin_add_many(GST_BIN(m_decoderPipeline.get()),
+        m_decoderAppsrc.get(), decodebin, convert, m_decoderAppsink.get(), nullptr);
+
+    // Link appsrc → decodebin (decodebin has "sometimes" src pad).
+    gst_element_link(m_decoderAppsrc.get(), decodebin);
+
+    // decodebin's dynamically created src pad → videoconvert → appsink.
+    g_signal_connect(decodebin, "pad-added",
+        G_CALLBACK(+[](GstElement* dec, GstPad* pad, gpointer data) {
+            auto* self = static_cast<AppendPipeline*>(data);
+            GstElement* convert = gst_bin_get_by_name(GST_BIN(self->m_decoderPipeline.get()), "conv");
+            GstPad* sinkpad = gst_element_get_static_pad(convert, "sink");
+            if (!gst_pad_is_linked(sinkpad))
+                gst_pad_link(pad, sinkpad);
+            gst_object_unref(sinkpad);
+            gst_element_link(convert, self->m_decoderAppsink.get());
+            gst_object_unref(convert);
+        }), this);
+
+    gst_element_set_state(m_decoderPipeline.get(), GST_STATE_PLAYING);
+    m_decoderValid = true;
+    GST_INFO("Sidecar decoder pipeline created and set to PLAYING");
+}
+
+GstFlowReturn AppendPipeline::decoderAppsinkNewSample(GstElement* appsink, AppendPipeline* self)
+{
+    GRefPtr<GstSample> sample = adoptGRef(gst_app_sink_pull_sample(GST_APP_SINK(appsink)));
+    if (!sample)
+        return GST_FLOW_OK;
+
+    // Marshal to main thread — triggerRepaint accesses main-thread state.
+    RunLoop::main().dispatch([self, sample = WTFMove(sample)] {
+        if (!self->m_decoderValid.load(std::memory_order_acquire) || !self->m_playerPrivate)
+            return;
+        // Report video dimensions from the decoded sample.
+        GstCaps* caps = gst_sample_get_caps(sample.get());
+        if (caps) {
+            GstVideoInfo info;
+            if (gst_video_info_from_caps(&info, caps)) {
+                self->m_playerPrivate->setVideoSize(GST_VIDEO_INFO_WIDTH(&info), GST_VIDEO_INFO_HEIGHT(&info));
+            }
+        }
+        self->m_playerPrivate->triggerRepaint(sample.get());
+    });
+    return GST_FLOW_OK;
 }
 
 void AppendPipeline::didReceiveInitializationSegment()

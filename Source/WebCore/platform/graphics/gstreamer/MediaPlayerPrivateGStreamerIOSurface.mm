@@ -160,6 +160,8 @@ MediaPlayerPrivateGStreamerIOSurface::MediaPlayerPrivateGStreamerIOSurface()
     // (MediaPlayerPrivateGStreamer) owns the layer after this returns;
     // it sets m_player->platformLayer() to return layer.get().
     m_state->layer = adoptNS([[CALayer alloc] init]);
+    [m_state->layer.get() setContentsGravity:kCAGravityResizeAspect];
+    [m_state->layer.get() setBackgroundColor:CGColorGetConstantColor(kCGColorBlack)];
     GST_INFO("IOSurface bridge created: gst_ctx=%p ns_ctx=%p cgl=%p layer=%p",
              gstCtx, nsCtx, m_state->cglCtx, m_state->layer.get());
 }

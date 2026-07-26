@@ -171,6 +171,7 @@ public:
     void setPreservesPitch(bool) final; 
     void setPreload(MediaPlayer::Preload) final;
     FloatSize naturalSize() const final;
+    void setVideoSize(int width, int height); // [leopard] for MSE sidecar decoder
     void setVolume(float) final;
     float volume() const final;
     void setMuted(bool) final;
