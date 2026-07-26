@@ -600,20 +600,27 @@ GstFlowReturn AppendPipeline::decoderAppsinkNewSample(GstElement* appsink, Appen
     if (!sample)
         return GST_FLOW_OK;
 
-    // Marshal to main thread — triggerRepaint accesses main-thread state.
-    RunLoop::main().dispatch([self, sample = WTFMove(sample)] {
-        if (!self->m_decoderValid.load(std::memory_order_acquire) || !self->m_playerPrivate)
-            return;
-        // Report video dimensions from the decoded sample.
-        GstCaps* caps = gst_sample_get_caps(sample.get());
-        if (caps) {
-            GstVideoInfo info;
-            if (gst_video_info_from_caps(&info, caps)) {
-                self->m_playerPrivate->setVideoSize(GST_VIDEO_INFO_WIDTH(&info), GST_VIDEO_INFO_HEIGHT(&info));
-            }
+    // [leopard] Call triggerRepaint directly from the streaming thread.
+    // With m_canRenderingBeAccelerated=false, triggerRepaint takes the
+    // non-accelerated condvar path: blocks this thread, starts a draw timer
+    // on the main thread, main thread calls paint() which fills the video
+    // element's rect correctly. This is the same mechanism progressive
+    // video uses.
+    if (!self->m_decoderValid.load(std::memory_order_acquire) || !self->m_playerPrivate)
+        return GST_FLOW_OK;
+
+    // Report video dimensions from the decoded sample.
+    GstCaps* caps = gst_sample_get_caps(sample.get());
+    if (caps) {
+        GstVideoInfo info;
+        if (gst_video_info_from_caps(&info, caps)) {
+            self->m_playerPrivate->setVideoSize(GST_VIDEO_INFO_WIDTH(&info), GST_VIDEO_INFO_HEIGHT(&info));
         }
-        self->m_playerPrivate->triggerRepaint(sample.get());
-    });
+    }
+
+    // [leopard] triggerRepaint on the streaming thread: with m_canRenderingBeAccelerated=false,
+    // this takes the condvar path (blocks until main thread paints).
+    self->m_playerPrivate->triggerRepaint(sample.get());
     return GST_FLOW_OK;
 }
 

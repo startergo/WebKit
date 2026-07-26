@@ -149,6 +149,11 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& urlString)
 void MediaPlayerPrivateGStreamerMSE::load(const String& url, MediaSourcePrivateClient* mediaSource)
 {
     m_mediaSource = mediaSource;
+    // [leopard] Force non-accelerated rendering for MSE. The IOSurface/CALayer
+    // compositing path requires playbin to properly transition states, which
+    // doesn't work on 1.4.5. The paint() path fills the video element correctly
+    // via the condvar draw mechanism, same as progressive video.
+    setAcceleratedRenderingEnabled(false);
     load(makeString("mediasource", url));
 }
 

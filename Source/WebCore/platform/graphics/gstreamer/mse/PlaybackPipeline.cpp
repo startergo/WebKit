@@ -131,10 +131,7 @@ MediaSourcePrivate::AddStatus PlaybackPipeline::addSourceBuffer(RefPtr<SourceBuf
     gst_app_src_set_stream_type(GST_APP_SRC(stream->appsrc), GST_APP_STREAM_TYPE_SEEKABLE);
 
     gst_app_src_set_max_bytes(GST_APP_SRC(stream->appsrc), 2 * WTF::MB);
-    // [leopard] block=TRUE keeps the pipeline alive across data gaps.
-    // With block=FALSE, appsrc pushes EOS when no data is available, killing
-    // the pipeline during MSE append gaps.
-    g_object_set(G_OBJECT(stream->appsrc), "block", TRUE, "min-percent", 20, "format", GST_FORMAT_TIME, nullptr);
+    g_object_set(G_OBJECT(stream->appsrc), "block", FALSE, "min-percent", 20, "format", GST_FORMAT_TIME, nullptr);
 
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
     priv->streams.append(stream);
