@@ -248,7 +248,7 @@ static void buildMediaEnginesVector()
 #endif
 #endif
 
-#if ENABLE(MEDIA_SOURCE)
+#if ENABLE(MEDIA_SOURCE) && !defined(LEOPARD_WEBKIT)
         MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine(addMediaEngine);
 #endif
 
