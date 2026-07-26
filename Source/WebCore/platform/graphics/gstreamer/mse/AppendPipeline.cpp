@@ -214,7 +214,17 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
         });
     }), this);
     g_signal_connect(m_appsink.get(), "new-sample", G_CALLBACK(+[](GstElement* appsink, AppendPipeline* appendPipeline) -> GstFlowReturn {
+#if !GST_CHECK_VERSION(1,6,0)
+        // [leopard] On 1.4.5, gst_app_sink_try_pull_sample (non-blocking) doesn't exist.
+        // Pull the sample here on the streaming thread where we know one is available,
+        // then dispatch to the main thread for processing. This avoids the deadlock
+        // that occurs when consumeAppsinkAvailableSamples() is called speculatively
+        // (e.g. from appsinkCapsChanged) with no sample queued.
+        GRefPtr<GstSample> sample = adoptGRef(gst_app_sink_pull_sample(GST_APP_SINK(appsink)));
+        appendPipeline->handleAppsinkNewSampleFromStreamingThread(WTFMove(sample));
+#else
         appendPipeline->handleAppsinkNewSampleFromStreamingThread(appsink);
+#endif
         return GST_FLOW_OK;
     }), this);
     g_signal_connect(m_appsink.get(), "eos", G_CALLBACK(+[](GstElement*, AppendPipeline* appendPipeline) {
@@ -559,13 +569,10 @@ void AppendPipeline::consumeAppsinkAvailableSamples()
         batchedSampleCount++;
     }
 #else
-    // [leopard] gst_app_sink_try_pull_sample is 1.6+. With default
-    // max-buffers=1, each new-sample callback has exactly one sample.
-    sample = adoptGRef(gst_app_sink_pull_sample(GST_APP_SINK(m_appsink.get())));
-    if (sample) {
-        appsinkNewSample(WTFMove(sample));
-        batchedSampleCount++;
-    }
+    // [leopard] On 1.4.5, samples are pulled in the new-sample callback
+    // (streaming thread) and processed via handleAppsinkNewSample(GRefPtr<GstSample>).
+    // This function is a no-op here — it's only called speculatively from
+    // appsinkCapsChanged, and there are no samples to drain.
 #endif
     m_playerPrivate->unblockDurationChanges();
 
@@ -644,12 +651,6 @@ void AppendPipeline::handleAppsinkNewSampleFromStreamingThread(GstElement*)
 {
     ASSERT(!isMainThread());
     if (&WTF::Thread::current() != m_streamingThread) {
-        // m_streamingThreadId has been initialized in appsrcEndOfAppendCheckerProbe().
-        // For a buffer to reach the appsink, a buffer must have passed through appsrcEndOfAppendCheckerProbe() first.
-        // This error will only raise if someone modifies the pipeline to include more than one streaming thread or
-        // removes the appsrcEndOfAppendCheckerProbe(). Either way, the end-of-append detection would be broken.
-        // AppendPipeline should have only one streaming thread. Otherwise we can't detect reliably when an appends has
-        // been demuxed completely.;
         GST_ERROR_OBJECT(m_pipeline.get(), "Appsink received a sample in a different thread than appsrcEndOfAppendCheckerProbe run.");
         ASSERT_NOT_REACHED();
     }
@@ -662,6 +663,21 @@ void AppendPipeline::handleAppsinkNewSampleFromStreamingThread(GstElement*)
         });
     }
 }
+
+#if !GST_CHECK_VERSION(1,6,0)
+// [leopard] 1.4.5 variant: the sample was already pulled on the streaming
+// thread by the new-sample callback. Process it directly via the task queue.
+void AppendPipeline::handleAppsinkNewSampleFromStreamingThread(GRefPtr<GstSample>&& sample)
+{
+    ASSERT(!isMainThread());
+
+    m_taskQueue.enqueueTask([this, sample = WTFMove(sample)]() mutable {
+        m_playerPrivate->blockDurationChanges();
+        appsinkNewSample(WTFMove(sample));
+        m_playerPrivate->unblockDurationChanges();
+    });
+}
+#endif
 
 static GRefPtr<GstElement>
 createOptionalParserForFormat(GstPad* demuxerSrcPad)

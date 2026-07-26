@@ -66,6 +66,9 @@ private:
     gint id();
 
     void handleAppsinkNewSampleFromStreamingThread(GstElement*);
+#if !GST_CHECK_VERSION(1,6,0)
+    void handleAppsinkNewSampleFromStreamingThread(GRefPtr<GstSample>&&);
+#endif
     void handleErrorConditionFromStreamingThread();
 
     // Takes ownership of caps.
