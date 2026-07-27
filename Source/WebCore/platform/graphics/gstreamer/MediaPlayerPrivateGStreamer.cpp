@@ -3110,11 +3110,13 @@ void MediaPlayerPrivateGStreamer::triggerRepaint(GstSample* sample)
     }
 
     if (!m_canRenderingBeAccelerated || m_forcePaintPath) {
-        // [leopard] Use m_notifier (safe via WeakPtr) — raw RunLoop dispatch
-        // captures `this` which dangles when YouTube destroys the media element.
-        m_notifier->notify(MainThreadNotification::GLRepaint, [this] {
+        // [leopard] Call repaint() directly from the streaming thread.
+        // MediaPlayer::repaint() is thread-safe — it schedules a layout
+        // on the main thread via HTMLMediaElement. This avoids m_notifier's
+        // coalescing (which drops intermediate frames) and avoids RunLoop
+        // dispatch (which dangles on element destruction).
+        if (m_player)
             m_player->repaint();
-        });
         return;
     }
 

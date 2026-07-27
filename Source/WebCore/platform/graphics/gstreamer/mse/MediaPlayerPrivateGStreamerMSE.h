@@ -72,6 +72,7 @@ public:
     // [leopard] Virtual playback state for sidecar decoder
     std::atomic<bool> m_virtualPlayback { false };
     std::atomic<int> m_sidecarFrameCount { 0 };
+    WTF::MonotonicTime m_virtualPlaybackStartTime;
     friend class AppendPipeline;
 
     void sourceSetup(GstElement*) override;

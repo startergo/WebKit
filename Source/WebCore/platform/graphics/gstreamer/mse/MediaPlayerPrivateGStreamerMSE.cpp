@@ -167,11 +167,10 @@ void MediaPlayerPrivateGStreamerMSE::pause()
 
 void MediaPlayerPrivateGStreamerMSE::play()
 {
-    // [leopard] Virtual playback: don't call playbin (it's stuck at READY→PAUSED).
-    // Just report success. The sidecar decoder provides actual video frames.
     m_isPaused = false;
     m_virtualPlayback = true;
     m_isEndReached = false;
+    m_virtualPlaybackStartTime = MonotonicTime::now();
     GST_INFO("Virtual playback started (sidecar decoder active)");
 }
 
@@ -789,12 +788,12 @@ void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfSt
 
 MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 {
-    // [leopard] Virtual playback: report advancing time based on decoded frames.
-    // This keeps YouTube's JS happy (currentTime progresses → no reset).
+    // [leopard] Virtual playback: advance currentTime at real wall-clock rate.
+    // Frame-count-based timing caused YouTube to see time jumps during burst
+    // decode, triggering seeks that reset the pipeline.
     if (m_virtualPlayback) {
-        int frames = m_sidecarFrameCount.load(std::memory_order_relaxed);
-        // 24fps = 1000/24 ms per frame ≈ 41667 µs
-        return MediaTime::createWithDouble(frames / 24.0);
+        double elapsed = (MonotonicTime::now() - m_virtualPlaybackStartTime).seconds();
+        return MediaTime::createWithDouble(elapsed);
     }
     MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
 
