@@ -3134,6 +3134,9 @@ void MediaPlayerPrivateGStreamer::triggerRepaint(GstSample* sample)
     // and presentCGImage ASSERT isMainThread; CGLTexImageIOSurface2D,
     // CGBitmapContextCreate and CALayer.contents all require main-thread access).
     if (m_isUsingFallbackVideoSink) {
+        // [leopard] Coalesced notification — safe via WeakPtr, processes on
+        // main thread. Streaming-thread direct presentation caused freezes
+        // (CGL/IOSurface contention with main thread's Core Animation access).
         m_notifier->notify(MainThreadNotification::GLRepaint, [this] {
             GRefPtr<GstSample> sample;
             {

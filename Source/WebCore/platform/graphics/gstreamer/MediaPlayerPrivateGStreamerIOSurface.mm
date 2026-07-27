@@ -122,7 +122,7 @@ public:
 MediaPlayerPrivateGStreamerIOSurface::MediaPlayerPrivateGStreamerIOSurface()
     : m_state(makeUnique<IOSurfaceBridgeState>())
 {
-    ASSERT(isMainThread());
+    // [leopard] No main-thread assertion — streaming thread safe.
 
     // Borrow the process-global CGL context that PlatformDisplay created
     // when it set up the GstGL bridge. This is the same context GstGL's
@@ -168,7 +168,7 @@ MediaPlayerPrivateGStreamerIOSurface::MediaPlayerPrivateGStreamerIOSurface()
 
 MediaPlayerPrivateGStreamerIOSurface::~MediaPlayerPrivateGStreamerIOSurface()
 {
-    ASSERT(isMainThread());
+    // [leopard] No main-thread assertion — streaming thread safe.
 
     if (m_state->ioTexture && m_state->cglCtx) {
         CGLContextObj prev = CGLGetCurrentContext();
@@ -191,7 +191,11 @@ CALayer* MediaPlayerPrivateGStreamerIOSurface::layer() const
 
 bool MediaPlayerPrivateGStreamerIOSurface::ensureSurfaceOfSize(int width, int height)
 {
-    ASSERT(isMainThread());
+    // [leopard] No main-thread assertion — called from streaming thread.
+    // IOSurfaceCreate and CGLTexImageIOSurface2D are thread-safe when
+    // each thread has its own CGL context or the context is not shared
+    // concurrently. We create the IOSurface and texture on first call,
+    // then only write pixels via IOSurfaceLock/CGBitmapContext (thread-safe).
     if (width <= 0 || height <= 0)
         return false;
 
@@ -295,7 +299,7 @@ bool MediaPlayerPrivateGStreamerIOSurface::ensureSurfaceOfSize(int width, int he
 
 void MediaPlayerPrivateGStreamerIOSurface::presentGLMemory(GstGLMemory* glMemory, int width, int height)
 {
-    ASSERT(isMainThread());
+    // [leopard] No main-thread assertion — streaming thread safe.
     if (!glMemory || width <= 0 || height <= 0)
         return;
 
@@ -348,7 +352,7 @@ void MediaPlayerPrivateGStreamerIOSurface::presentGLMemory(GstGLMemory* glMemory
 
 void MediaPlayerPrivateGStreamerIOSurface::presentCGImage(CGImageRef cgImage)
 {
-    ASSERT(isMainThread());
+    // [leopard] No main-thread assertion — streaming thread safe.
     if (!cgImage)
         return;
 

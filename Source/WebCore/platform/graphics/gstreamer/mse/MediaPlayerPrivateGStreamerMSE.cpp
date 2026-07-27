@@ -150,10 +150,10 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& url, MediaSourcePrivateC
 {
     m_mediaSource = mediaSource;
     load(makeString("mediasource", url));
-    // [leopard] Force paint() path — the IOSurface/CALayer compositing path
-    // doesn't work because WebCore's compositing system can't set up when
-    // the MSE state machine is virtual. paint() fills the video element correctly.
-    m_forcePaintPath = true;
+    // [leopard] Use IOSurface/CALayer compositing (Core Animation render server,
+    // not main thread). Virtual playback is active so the compositing system
+    // should size the layer correctly.
+    m_forcePaintPath = false;
     if (m_player)
         m_player->acceleratedRenderingStateChanged();
 }
