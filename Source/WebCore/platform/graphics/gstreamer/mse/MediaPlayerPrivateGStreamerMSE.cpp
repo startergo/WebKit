@@ -150,9 +150,13 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& url, MediaSourcePrivateC
 {
     m_mediaSource = mediaSource;
     load(makeString("mediasource", url));
-    // [leopard] Force paint() path for MSE — bypasses IOSurface/CALayer compositing
-    // which doesn't work when playbin is stuck at READY→PAUSED.
+    // [leopard] Force paint() path for MSE. The IOSurface/CALayer compositing
+    // path doesn't work when playbin is stuck at READY→PAUSED. With
+    // supportsAcceleratedRendering()=false, WebCore uses paint() which fills
+    // the video element rect correctly.
     m_forcePaintPath = true;
+    if (m_player)
+        m_player->acceleratedRenderingStateChanged();
 }
 
 void MediaPlayerPrivateGStreamerMSE::pause()

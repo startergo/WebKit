@@ -227,7 +227,7 @@ public:
     // Core Animation + CAOpenGLLayer, not the TextureMapper compositor.
 #if USE(GSTREAMER_GL) && PLATFORM(COCOA) && !USE(TEXTURE_MAPPER_GL)
     PlatformLayer* platformLayer() const override;
-    bool supportsAcceleratedRendering() const override { return true; }
+    bool supportsAcceleratedRendering() const override { return !m_forcePaintPath; }
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
