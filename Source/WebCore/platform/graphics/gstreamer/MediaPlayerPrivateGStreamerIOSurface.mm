@@ -356,6 +356,11 @@ void MediaPlayerPrivateGStreamerIOSurface::presentCGImage(CGImageRef cgImage)
     if (!cgImage)
         return;
 
+    static std::atomic<int> s_presentCount { 0 };
+    int count = ++s_presentCount;
+    if (count % 30 == 0)
+        GST_DEBUG("DIAG presentCGImage: %d frames", count);
+
     int width = CGImageGetWidth(cgImage);
     int height = CGImageGetHeight(cgImage);
     if (width <= 0 || height <= 0)
