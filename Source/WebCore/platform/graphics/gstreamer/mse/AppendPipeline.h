@@ -105,6 +105,8 @@ private:
     GRefPtr<GstElement> m_decoderAppsrc;
     GRefPtr<GstElement> m_decoderAppsink;
     std::atomic<bool> m_decoderValid { false };
+    bool m_readyStateAdvanced { false };
+    bool m_sizeReported { false };
 
     static void staticInitialization();
 

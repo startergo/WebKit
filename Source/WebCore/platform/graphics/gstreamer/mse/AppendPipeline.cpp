@@ -519,6 +519,15 @@ void AppendPipeline::appsinkNewSample(GRefPtr<GstSample>&& sample)
     // [leopard] Feed encoded video samples to the sidecar decoder pipeline.
     // This bypasses playbin's READY→PAUSED stall by using decodebin directly.
     if (m_streamType == Video) {
+        // Advance readyState on the FIRST encoded sample (per-instance flag).
+        if (!m_readyStateAdvanced) {
+            m_readyStateAdvanced = true;
+            RunLoop::main().dispatch([this] {
+                if (m_playerPrivate)
+                    m_playerPrivate->setReadyState(MediaPlayer::ReadyState::HaveEnoughData);
+            });
+        }
+
         ensureDecoderPipeline(gst_sample_get_caps(sample.get()));
         GstBuffer* buffer = gst_sample_get_buffer(sample.get());
         if (buffer && m_decoderAppsrc) {
@@ -630,14 +639,22 @@ GstFlowReturn AppendPipeline::decoderAppsinkNewSample(GstElement* appsink, Appen
         }
     });
 
-    // [leopard] Advance readyState ONCE so YouTube doesn't reset.
-    static std::once_flag s_readyFlag;
-    std::call_once(s_readyFlag, [self] {
-        RunLoop::main().dispatch([self] {
-            if (self->m_decoderValid.load(std::memory_order_acquire) && self->m_playerPrivate)
-                self->m_playerPrivate->setReadyState(MediaPlayer::ReadyState::HaveEnoughData);
-        });
-    });
+    // Report video dimensions ONCE (per-instance flag).
+    if (!self->m_sizeReported) {
+        GstCaps* caps = gst_sample_get_caps(sample.get());
+        if (caps) {
+            GstVideoInfo info;
+            if (gst_video_info_from_caps(&info, caps)) {
+                int w = GST_VIDEO_INFO_WIDTH(&info);
+                int h = GST_VIDEO_INFO_HEIGHT(&info);
+                self->m_sizeReported = true;
+                RunLoop::main().dispatch([self, w, h] {
+                    if (self->m_decoderValid.load(std::memory_order_acquire) && self->m_playerPrivate)
+                        self->m_playerPrivate->setVideoSize(w, h);
+                });
+            }
+        }
+    }
 
     // [leopard] triggerRepaint on the streaming thread: with m_canRenderingBeAccelerated=false,
     // this takes the condvar path (blocks until main thread paints).
