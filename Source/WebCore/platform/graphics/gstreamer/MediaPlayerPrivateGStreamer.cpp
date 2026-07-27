@@ -3110,12 +3110,10 @@ void MediaPlayerPrivateGStreamer::triggerRepaint(GstSample* sample)
     }
 
     if (!m_canRenderingBeAccelerated || m_forcePaintPath) {
-        // [leopard] For MSE sidecar decoder: use direct dispatch instead of
-        // coalesced m_notifier (which drops intermediate frames). Each frame
-        // gets its own paint task for smoother playback.
-        RunLoop::main().dispatch([this] {
-            if (m_player)
-                m_player->repaint();
+        // [leopard] Use m_notifier (safe via WeakPtr) — raw RunLoop dispatch
+        // captures `this` which dangles when YouTube destroys the media element.
+        m_notifier->notify(MainThreadNotification::GLRepaint, [this] {
+            m_player->repaint();
         });
         return;
     }
