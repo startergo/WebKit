@@ -163,21 +163,26 @@ void GStreamerRegistryScanner::initialize()
         auto vp8DecoderAvailable = hasElementForMediaType(m_videoDecoderFactories, "video/x-vp8", true);
         auto vp9DecoderAvailable = hasElementForMediaType(m_videoDecoderFactories, "video/x-vp9", true);
 
-        if (vp8DecoderAvailable || vp9DecoderAvailable)
+        // [leopard] Do NOT advertise VP8/VP9 for MSE. VP9 software decode on
+        // the 9400M is too CPU-intensive. Force YouTube to serve H.264 instead,
+        // which decodes much faster (avdec_h264). The video/webm MIME type
+        // and VP9 codec patterns are excluded from the MSE codec map.
+        // (VP8/VP9 remain available for non-MSE progressive playback.)
+        if (!m_isMediaSource && (vp8DecoderAvailable || vp9DecoderAvailable))
             m_mimeTypeSet.add(AtomString("video/webm"));
 
-        if (vp8DecoderAvailable) {
+        if (!m_isMediaSource && vp8DecoderAvailable) {
             m_codecMap.add(AtomString("vp8"), vp8DecoderAvailable.isUsingHardware);
             m_codecMap.add(AtomString("x-vp8"), vp8DecoderAvailable.isUsingHardware);
             m_codecMap.add(AtomString("vp8.0"), vp8DecoderAvailable.isUsingHardware);
         }
-        if (vp9DecoderAvailable) {
+        if (!m_isMediaSource && vp9DecoderAvailable) {
             m_codecMap.add(AtomString("vp9"), vp9DecoderAvailable.isUsingHardware);
             m_codecMap.add(AtomString("x-vp9"), vp9DecoderAvailable.isUsingHardware);
             m_codecMap.add(AtomString("vp9.0"), vp9DecoderAvailable.isUsingHardware);
             m_codecMap.add(AtomString("vp09*"), vp9DecoderAvailable.isUsingHardware);
         }
-        if (opusSupported)
+        if (!m_isMediaSource && opusSupported)
             m_mimeTypeSet.add(AtomString("audio/webm"));
     }
 

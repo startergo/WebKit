@@ -3110,11 +3110,11 @@ void MediaPlayerPrivateGStreamer::triggerRepaint(GstSample* sample)
     }
 
     if (!m_canRenderingBeAccelerated || m_forcePaintPath) {
-        // [leopard] Use m_notifier (WeakPtr-safe, main thread). Direct
-        // m_player->repaint() crashes — it touches the render tree which
-        // is main-thread-only. m_notifier coalesces by design (prevents
-        // flooding the main thread), which means some frames are dropped.
         m_notifier->notify(MainThreadNotification::GLRepaint, [this] {
+            static std::atomic<int> s_paintCount { 0 };
+            int c = ++s_paintCount;
+            if (c % 30 == 0)
+                GST_DEBUG("DIAG paint: %d frames", c);
             m_player->repaint();
         });
         return;
