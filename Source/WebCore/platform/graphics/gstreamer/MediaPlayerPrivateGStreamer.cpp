@@ -3112,12 +3112,11 @@ void MediaPlayerPrivateGStreamer::triggerRepaint(GstSample* sample)
         });
     }
 
-    if (!m_canRenderingBeAccelerated) {
-        LockHolder locker(m_drawMutex);
-        if (m_isBeingDestroyed)
-            return;
-        m_drawTimer.startOneShot(0_s);
-        m_drawCondition.wait(m_drawMutex);
+    if (!m_canRenderingBeAccelerated || m_forcePaintPath) {
+        // [leopard] For MSE sidecar decoder: use async notification instead of
+        m_notifier->notify(MainThreadNotification::GLRepaint, [this] {
+            m_player->repaint();
+        });
         return;
     }
 

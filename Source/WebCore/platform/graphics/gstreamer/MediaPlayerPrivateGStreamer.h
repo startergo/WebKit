@@ -172,7 +172,9 @@ public:
     void setPreload(MediaPlayer::Preload) final;
     FloatSize naturalSize() const final;
     void setVideoSize(int width, int height); // [leopard] for MSE sidecar decoder
-    void setAcceleratedRenderingEnabled(bool enabled) { m_canRenderingBeAccelerated = enabled; } // [leopard]
+    void setAcceleratedRenderingEnabled(bool enabled) { m_canRenderingBeAccelerated = enabled; }
+    void advanceReadyState(MediaPlayer::ReadyState);
+    bool m_forcePaintPath { false }; // [leopard] forces triggerRepaint to use paint() path
     void setVolume(float) final;
     float volume() const final;
     void setMuted(bool) final;

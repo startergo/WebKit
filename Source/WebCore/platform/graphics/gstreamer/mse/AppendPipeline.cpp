@@ -609,14 +609,23 @@ GstFlowReturn AppendPipeline::decoderAppsinkNewSample(GstElement* appsink, Appen
     if (!self->m_decoderValid.load(std::memory_order_acquire) || !self->m_playerPrivate)
         return GST_FLOW_OK;
 
-    // Report video dimensions from the decoded sample.
-    GstCaps* caps = gst_sample_get_caps(sample.get());
-    if (caps) {
-        GstVideoInfo info;
-        if (gst_video_info_from_caps(&info, caps)) {
-            self->m_playerPrivate->setVideoSize(GST_VIDEO_INFO_WIDTH(&info), GST_VIDEO_INFO_HEIGHT(&info));
+    // Report video dimensions ONCE from the first decoded frame.
+    // Must dispatch to main thread — sizeChanged() touches WebCore timers.
+    static std::once_flag s_sizeFlag;
+    std::call_once(s_sizeFlag, [self, &sample] {
+        GstCaps* caps = gst_sample_get_caps(sample.get());
+        if (caps) {
+            GstVideoInfo info;
+            if (gst_video_info_from_caps(&info, caps)) {
+                int w = GST_VIDEO_INFO_WIDTH(&info);
+                int h = GST_VIDEO_INFO_HEIGHT(&info);
+                RunLoop::main().dispatch([self, w, h] {
+                    if (self->m_decoderValid.load(std::memory_order_acquire) && self->m_playerPrivate)
+                        self->m_playerPrivate->setVideoSize(w, h);
+                });
+            }
         }
-    }
+    });
 
     // [leopard] triggerRepaint on the streaming thread: with m_canRenderingBeAccelerated=false,
     // this takes the condvar path (blocks until main thread paints).
