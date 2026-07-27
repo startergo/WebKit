@@ -150,10 +150,10 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& url, MediaSourcePrivateC
 {
     m_mediaSource = mediaSource;
     load(makeString("mediasource", url));
-    // [leopard] Use IOSurface/CALayer compositing (Core Animation render server,
-    // not main thread). Virtual playback is active so the compositing system
-    // should size the layer correctly.
-    m_forcePaintPath = false;
+    // [leopard] Use paint() path — reliable compositing sizing. The IOSurface/
+    // CALayer path has inconsistent layer positioning because the compositing
+    // system can't determine geometry without a properly transitioning playbin.
+    m_forcePaintPath = true;
     if (m_player)
         m_player->acceleratedRenderingStateChanged();
 }
