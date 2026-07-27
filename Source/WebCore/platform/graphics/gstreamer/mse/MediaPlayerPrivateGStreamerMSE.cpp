@@ -150,9 +150,6 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& url, MediaSourcePrivateC
 {
     m_mediaSource = mediaSource;
     load(makeString("mediasource", url));
-    // [leopard] Use paint() path — reliable compositing sizing. The IOSurface/
-    // CALayer path has inconsistent layer positioning because the compositing
-    // system can't determine geometry without a properly transitioning playbin.
     m_forcePaintPath = true;
     if (m_player)
         m_player->acceleratedRenderingStateChanged();

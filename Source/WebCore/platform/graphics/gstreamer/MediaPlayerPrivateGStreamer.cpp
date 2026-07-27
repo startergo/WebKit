@@ -3110,13 +3110,13 @@ void MediaPlayerPrivateGStreamer::triggerRepaint(GstSample* sample)
     }
 
     if (!m_canRenderingBeAccelerated || m_forcePaintPath) {
-        // [leopard] Call repaint() directly from the streaming thread.
-        // MediaPlayer::repaint() is thread-safe — it schedules a layout
-        // on the main thread via HTMLMediaElement. This avoids m_notifier's
-        // coalescing (which drops intermediate frames) and avoids RunLoop
-        // dispatch (which dangles on element destruction).
-        if (m_player)
+        // [leopard] Use m_notifier (WeakPtr-safe, main thread). Direct
+        // m_player->repaint() crashes — it touches the render tree which
+        // is main-thread-only. m_notifier coalesces by design (prevents
+        // flooding the main thread), which means some frames are dropped.
+        m_notifier->notify(MainThreadNotification::GLRepaint, [this] {
             m_player->repaint();
+        });
         return;
     }
 
