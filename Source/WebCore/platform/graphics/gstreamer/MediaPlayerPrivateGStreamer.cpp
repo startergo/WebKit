@@ -2964,9 +2964,6 @@ void MediaPlayerPrivateGStreamer::acceleratedRenderingStateChanged()
 // the GstGLMemory produced by glupload.
 PlatformLayer* MediaPlayerPrivateGStreamer::platformLayer() const
 {
-    // [leopard] For MSE, return nullptr so WebCore uses the paint() path which
-    // correctly fills the video element. The IOSurface/CALayer path is only used
-    // for progressive video where the compositing system is properly set up.
     return m_ioSurfaceBridge ? m_ioSurfaceBridge->layer() : nullptr;
 }
 #endif
@@ -3113,9 +3110,12 @@ void MediaPlayerPrivateGStreamer::triggerRepaint(GstSample* sample)
     }
 
     if (!m_canRenderingBeAccelerated || m_forcePaintPath) {
-        // [leopard] For MSE sidecar decoder: use async notification instead of
-        m_notifier->notify(MainThreadNotification::GLRepaint, [this] {
-            m_player->repaint();
+        // [leopard] For MSE sidecar decoder: use direct dispatch instead of
+        // coalesced m_notifier (which drops intermediate frames). Each frame
+        // gets its own paint task for smoother playback.
+        RunLoop::main().dispatch([this] {
+            if (m_player)
+                m_player->repaint();
         });
         return;
     }

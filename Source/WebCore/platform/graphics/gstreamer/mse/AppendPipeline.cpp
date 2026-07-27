@@ -609,6 +609,9 @@ GstFlowReturn AppendPipeline::decoderAppsinkNewSample(GstElement* appsink, Appen
     if (!self->m_decoderValid.load(std::memory_order_acquire) || !self->m_playerPrivate)
         return GST_FLOW_OK;
 
+    // [leopard] Increment the virtual playback frame counter.
+    self->m_playerPrivate->m_sidecarFrameCount.fetch_add(1, std::memory_order_relaxed);
+
     // Report video dimensions ONCE from the first decoded frame.
     // Must dispatch to main thread — sizeChanged() touches WebCore timers.
     static std::once_flag s_sizeFlag;
@@ -625,6 +628,15 @@ GstFlowReturn AppendPipeline::decoderAppsinkNewSample(GstElement* appsink, Appen
                 });
             }
         }
+    });
+
+    // [leopard] Advance readyState ONCE so YouTube doesn't reset.
+    static std::once_flag s_readyFlag;
+    std::call_once(s_readyFlag, [self] {
+        RunLoop::main().dispatch([self] {
+            if (self->m_decoderValid.load(std::memory_order_acquire) && self->m_playerPrivate)
+                self->m_playerPrivate->setReadyState(MediaPlayer::ReadyState::HaveEnoughData);
+        });
     });
 
     // [leopard] triggerRepaint on the streaming thread: with m_canRenderingBeAccelerated=false,

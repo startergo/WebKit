@@ -57,6 +57,7 @@ public:
     MediaTime currentMediaTime() const override;
 
     void pause() override;
+    void play() override; // [leopard] virtual playback for sidecar decoder
     bool seeking() const override;
     void seek(const MediaTime&) override;
     void configurePlaySink() override;
@@ -67,6 +68,11 @@ public:
 
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
     MediaTime maxMediaTimeSeekable() const override;
+
+    // [leopard] Virtual playback state for sidecar decoder
+    std::atomic<bool> m_virtualPlayback { false };
+    std::atomic<int> m_sidecarFrameCount { 0 };
+    friend class AppendPipeline;
 
     void sourceSetup(GstElement*) override;
 

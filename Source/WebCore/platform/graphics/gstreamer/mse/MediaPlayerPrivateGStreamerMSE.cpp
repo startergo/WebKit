@@ -150,10 +150,9 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& url, MediaSourcePrivateC
 {
     m_mediaSource = mediaSource;
     load(makeString("mediasource", url));
-    // [leopard] Force paint() path for MSE. The IOSurface/CALayer compositing
-    // path doesn't work when playbin is stuck at READY→PAUSED. With
-    // supportsAcceleratedRendering()=false, WebCore uses paint() which fills
-    // the video element rect correctly.
+    // [leopard] Force paint() path — the IOSurface/CALayer compositing path
+    // doesn't work because WebCore's compositing system can't set up when
+    // the MSE state machine is virtual. paint() fills the video element correctly.
     m_forcePaintPath = true;
     if (m_player)
         m_player->acceleratedRenderingStateChanged();
@@ -161,9 +160,19 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& url, MediaSourcePrivateC
 
 void MediaPlayerPrivateGStreamerMSE::pause()
 {
-    // FIXME: Should not need direct access to this member. This override is probably not needed.
     m_isPaused = true;
+    m_virtualPlayback = false;
     MediaPlayerPrivateGStreamer::pause();
+}
+
+void MediaPlayerPrivateGStreamerMSE::play()
+{
+    // [leopard] Virtual playback: don't call playbin (it's stuck at READY→PAUSED).
+    // Just report success. The sidecar decoder provides actual video frames.
+    m_isPaused = false;
+    m_virtualPlayback = true;
+    m_isEndReached = false;
+    GST_INFO("Virtual playback started (sidecar decoder active)");
 }
 
 MediaTime MediaPlayerPrivateGStreamerMSE::durationMediaTime() const
@@ -780,6 +789,13 @@ void MediaPlayerPrivateGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfSt
 
 MediaTime MediaPlayerPrivateGStreamerMSE::currentMediaTime() const
 {
+    // [leopard] Virtual playback: report advancing time based on decoded frames.
+    // This keeps YouTube's JS happy (currentTime progresses → no reset).
+    if (m_virtualPlayback) {
+        int frames = m_sidecarFrameCount.load(std::memory_order_relaxed);
+        // 24fps = 1000/24 ms per frame ≈ 41667 µs
+        return MediaTime::createWithDouble(frames / 24.0);
+    }
     MediaTime position = MediaPlayerPrivateGStreamer::currentMediaTime();
 
     if (m_eosPending && position >= durationMediaTime()) {

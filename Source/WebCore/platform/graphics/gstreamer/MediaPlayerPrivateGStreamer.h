@@ -161,7 +161,7 @@ public:
 #endif
     void cancelLoad() final;
     void prepareToPlay() final;
-    void play() final;
+    void play() override;
     void pause() override;
     bool paused() const final;
     bool seeking() const override { return m_isSeeking; }
